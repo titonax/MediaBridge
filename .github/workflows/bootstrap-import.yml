@@ -27,8 +27,9 @@ jobs:
 
       - name: Replace repository contents
         run: |
-          rsync -a --delete --exclude '.git' /tmp/cobalt-source/ ./
+          rsync -a --delete --exclude '.git' --exclude '.github/workflows/' /tmp/cobalt-source/ ./
           rm -f .github/workflows/bootstrap-import.yml
+          find .github/workflows -type d -empty -delete 2>/dev/null || true
 
       - name: Commit independent baseline
         run: |

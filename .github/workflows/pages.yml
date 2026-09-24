@@ -1,0 +1,90 @@
+# Build every proposed change, but deploy Pages only from main.
+name: Build and deploy web to Pages
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      WEB_BASE_PATH: /cobalt
+      # Local-lab default: the GitHub Pages frontend talks to a cobalt API
+      # running on the same computer as the browser. Set repository variable
+      # WEB_DEFAULT_API to an HTTPS URL when a shared/public API is available.
+      WEB_DEFAULT_API: ${{ vars.WEB_DEFAULT_API || 'http://localhost:9000/' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Show processing API target
+        run: echo "WEB_DEFAULT_API=$WEB_DEFAULT_API"
+
+      - name: Check web
+        run: pnpm --dir web check
+
+      - name: Build web
+        run: pnpm --dir web build
+
+      - name: Verify Pages artifact
+        shell: bash
+        run: |
+          test -f web/build/index.html
+          test -f web/build/404.html
+          test -d web/build/_app
+          test -d web/build/_libav
+          grep -q '/cobalt/' web/build/index.html
+          if grep -R -q 'api.example.invalid' web/build; then
+            echo "invalid placeholder API leaked into Pages artifact"
+            exit 1
+          fi
+          echo "Pages artifact looks valid."
+
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./web/build
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

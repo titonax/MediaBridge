@@ -18,7 +18,12 @@ const __dirname = path.dirname(__filename).slice(0, -4);
 
 app.disable("x-powered-by");
 
-if (env.apiURL) {
+if (!env.apiURL) {
+    console.error(
+        Red("API_URL env variable is missing, MediaBridge API cannot start.")
+    );
+    process.exitCode = 1;
+} else {
     const { runAPI } = await import("./core/api.js");
 
     if (isCluster) {
@@ -30,8 +35,4 @@ if (env.apiURL) {
     }
 
     runAPI(express, app, __dirname, cluster.isPrimary);
-} else {
-    console.log(
-        Red("API_URL env variable is missing, cobalt api can't start.")
-    )
 }

@@ -1,41 +1,41 @@
 #!/bin/bash
 set -e
 
-# thx: https://stackoverflow.com/a/27601038
 waitport() {
     ATTEMPTS=50
-    while [ $((ATTEMPTS-=1)) -gt 0 ] && ! nc -z localhost $1; do   
+    while [ $((ATTEMPTS-=1)) -gt 0 ] && ! nc -z localhost $1; do
         sleep 0.1
     done
 
     [ "$ATTEMPTS" != 0 ] || exit 1
 }
 
+test_health() {
+    HEALTH_RESPONSE=$(curl -fsS -m 3 http://localhost:3000/healthz)
+
+    echo "HEALTH_RESPONSE=$HEALTH_RESPONSE"
+
+    [ "$(echo "$HEALTH_RESPONSE" | jq -r .status)" = "ok" ] || exit 1
+    [ "$(echo "$HEALTH_RESPONSE" | jq -r .service)" = "mediabridge-api" ] || exit 1
+}
+
 test_api() {
     waitport 3000
-    curl -m 3 http://localhost:3000/
-    API_RESPONSE=$(curl -m 10 http://localhost:3000/ \
+    test_health
+
+    SERVER_INFO=$(curl -fsS -m 3 http://localhost:3000/)
+    echo "SERVER_INFO=$SERVER_INFO"
+    [ "$(echo "$SERVER_INFO" | jq -r 'has("cobalt")')" = "true" ] || exit 1
+
+    API_RESPONSE=$(curl -sS -m 3 http://localhost:3000/ \
          -X POST \
          -H "Accept: application/json" \
          -H "Content-Type: application/json" \
-         -d '{"url":"https://garfield-69.tumblr.com/post/696499862852780032","alwaysProxy":true}')
+         -d '{}')
 
     echo "API_RESPONSE=$API_RESPONSE"
-    STATUS=$(echo "$API_RESPONSE" | jq -r .status)
-    STREAM_URL=$(echo "$API_RESPONSE" | jq -r .url)
-    [ "$STATUS" = tunnel ] || exit 1;
-    S=$(curl -I -m 10 "$STREAM_URL")
-
-    CONTENT_LENGTH=$(echo "$S" \
-                        | grep -i content-length \
-                        | cut -d' ' -f2 \
-                        | tr -d '\r')
-
-    echo "$CONTENT_LENGTH"
-    [ "$CONTENT_LENGTH" = 0 ] && exit 1
-    if [ "$CONTENT_LENGTH" -lt 512 ]; then
-        exit 1
-    fi
+    [ "$(echo "$API_RESPONSE" | jq -r .status)" = "error" ] || exit 1
+    [ "$(echo "$API_RESPONSE" | jq -r .error.code)" = "error.api.link.missing" ] || exit 1
 }
 
 setup_api() {

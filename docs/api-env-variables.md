@@ -69,6 +69,7 @@ this document is not final and will expand over time. feel free to improve it!
 | YOUTUBE_ALLOW_BETTER_AUDIO       | `1`                      |
 | ENABLE_DEPRECATED_YOUTUBE_HLS    | `key`                    |
 | YOUTUBE_PLAYER_ID                | `abcdefff`               |
+| YOUTUBE_INVIDIOUS_INSTANCES       | `https://inv.example`    |
 
 [*view details*](#service-specific)
 
@@ -278,6 +279,13 @@ if defined, cobalt chooses one of them at each client initialization, otherwise
 defaults to the current latest player ID.
 
 the value is a string.
+
+### YOUTUBE_INVIDIOUS_INSTANCES
+comma-separated list of Invidious instances used only as an alternate YouTube metadata/stream provider when Innertube is blocked by YouTube's bot challenge.
+
+MediaBridge requests the Invidious video API with `local=true` so returned playback URLs are proxied by the selected Invidious instance rather than tied to that instance's YouTube egress session.
+
+Failed instances enter a short in-memory cooldown before being retried. Keep this list limited to instances you trust.
 
 ### YOUTUBE_ALLOW_BETTER_AUDIO
 when set to `1`, cobalt will try to use higher quality audio if user requests it via `youtubeBetterAudio`. will negatively impact the rate limit of a secondary youtube client with a session.

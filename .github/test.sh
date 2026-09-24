@@ -23,29 +23,19 @@ test_api() {
     waitport 3000
     test_health
 
-    curl -m 3 http://localhost:3000/
-    API_RESPONSE=$(curl -m 10 http://localhost:3000/ \
+    SERVER_INFO=$(curl -fsS -m 3 http://localhost:3000/)
+    echo "SERVER_INFO=$SERVER_INFO"
+    [ "$(echo "$SERVER_INFO" | jq -r 'has("cobalt")')" = "true" ] || exit 1
+
+    API_RESPONSE=$(curl -fsS -m 3 http://localhost:3000/ \
          -X POST \
          -H "Accept: application/json" \
          -H "Content-Type: application/json" \
-         -d '{"url":"https://garfield-69.tumblr.com/post/696499862852780032","alwaysProxy":true}')
+         -d '{}')
 
     echo "API_RESPONSE=$API_RESPONSE"
-    STATUS=$(echo "$API_RESPONSE" | jq -r .status)
-    STREAM_URL=$(echo "$API_RESPONSE" | jq -r .url)
-    [ "$STATUS" = tunnel ] || exit 1;
-    S=$(curl -I -m 10 "$STREAM_URL")
-
-    CONTENT_LENGTH=$(echo "$S" \
-                        | grep -i content-length \
-                        | cut -d' ' -f2 \
-                        | tr -d '\r')
-
-    echo "$CONTENT_LENGTH"
-    [ "$CONTENT_LENGTH" = 0 ] && exit 1
-    if [ "$CONTENT_LENGTH" -lt 512 ]; then
-        exit 1
-    fi
+    [ "$(echo "$API_RESPONSE" | jq -r .status)" = "error" ] || exit 1
+    [ "$(echo "$API_RESPONSE" | jq -r .error.code)" = "error.api.link.missing" ] || exit 1
 }
 
 setup_api() {

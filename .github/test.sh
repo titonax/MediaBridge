@@ -27,7 +27,7 @@ test_api() {
     echo "SERVER_INFO=$SERVER_INFO"
     [ "$(echo "$SERVER_INFO" | jq -r 'has("cobalt")')" = "true" ] || exit 1
 
-    API_RESPONSE=$(curl -fsS -m 3 http://localhost:3000/ \
+    API_RESPONSE=$(curl -sS -m 3 http://localhost:3000/ \
          -X POST \
          -H "Accept: application/json" \
          -H "Content-Type: application/json" \

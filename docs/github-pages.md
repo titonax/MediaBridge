@@ -1,106 +1,77 @@
-# GitHub Pages test deployment
+# GitHub Pages deployment
 
-This fork can build the SvelteKit frontend as a GitHub Pages project site.
+MediaBridge uses GitHub Pages for the static web application and a separate HTTPS processing API for server-side extraction, proxying, tunnels, and FFmpeg work.
 
-Expected URL:
+## Public web URL
 
 ```
 https://titonax.github.io/MediaBridge/
 ```
+
+## Processing API
+
+The Pages build currently targets:
+
+```
+https://mediabridge-processing-api.onrender.com/
+```
+
+The API exposes a stable liveness endpoint:
+
+```
+GET /healthz
+```
+
+A valid response must contain:
+
+```json
+{
+  "status": "ok",
+  "service": "mediabridge-api"
+}
+```
+
+## Deployment gate
+
+The Pages workflow does not blindly publish a frontend that points at a dead backend.
+
+Before building the web application it:
+
+1. requires the processing API URL to use HTTPS;
+2. requests `/healthz`;
+3. retries to allow a sleeping development instance to wake up;
+4. requires `status=ok` and `service=mediabridge-api`;
+5. builds the SvelteKit application only after that contract passes;
+6. rejects artifacts that still contain `localhost:9000` or the old invalid placeholder.
+
+This means a green Pages deployment represents both a valid static build and a reachable MediaBridge processing API at build time.
 
 ## Architecture
 
-Unlike UEFI Editor, cobalt is not a browser-only application. GitHub Pages hosts only the frontend; media extraction, proxying and FFmpeg server-side work require a cobalt API.
-
-For the local test setup used by this fork:
-
-```
-GitHub Pages
-https://titonax.github.io/MediaBridge/
-            |
-            | browser requests
-            v
-http://localhost:9000/
-local cobalt API built from this fork
-```
-
-The localhost address is resolved by the browser, not by GitHub Pages. Therefore the API must be running on the same computer where the Pages site is being tested.
-
-## Start the local processing API
-
-Requirements:
-
-- Docker Desktop / Docker Engine
-- Docker Compose
-
-From the repository root:
-
-```sh
-docker compose -f docker-compose.local.yml up --build -d
-```
-
-Check that the API is reachable:
-
-```
-http://localhost:9000/
-```
-
-It should return cobalt instance information as JSON.
-
-Then open:
-
 ```
 https://titonax.github.io/MediaBridge/
+                  |
+                  | HTTPS
+                  v
+https://mediabridge-processing-api.onrender.com/
+                  |
+                  +-- /healthz
+                  +-- media resolvers
+                  +-- tunnel/proxy
+                  +-- server processing
 ```
 
-The Pages build defaults to `http://localhost:9000/`, so pasted media URLs can now be processed by the local API.
+GitHub Pages never runs the Node backend itself.
 
-Stop it with:
+## Render development-service behavior
 
-```sh
-docker compose -f docker-compose.local.yml down
-```
+The initial processing instance uses a development/free Render service. It can spin down after inactivity, so the first request after a quiet period can take longer while the service wakes.
 
-## Browser local-network permission
-
-Modern browsers treat loopback addresses such as `http://localhost` as local/trustworthy resources, but some versions may ask for permission for a public HTTPS page to access the local network/loopback interface. Allow that permission for this test site when prompted.
-
-## Shared or public API
-
-When a permanent HTTPS processing server is available, create a GitHub repository variable:
-
-```
-WEB_DEFAULT_API
-```
-
-with a value such as:
-
-```
-https://api.example.org/
-```
-
-Then redeploy Pages. That value overrides the localhost test default, and no frontend code change is required.
-
-Do not point this fork at `api.cobalt.tools` unless the upstream operators explicitly allow it; their hosted API is not intended as a generic backend for third-party frontends.
-
-## Workflow behavior
-
-The `Build and deploy web to Pages` workflow follows the UEFI Editor model:
-
-- every pull request targeting `main` builds and validates the frontend;
-- pull requests do not deploy;
-- running the workflow manually from `main` builds and deploys the current production branch to GitHub Pages;
-- the generated artifact is rejected if the old non-routable `api.example.invalid` placeholder appears.
-
-## One-time GitHub setting
-
-GitHub Pages must be enabled once:
-
-`Settings -> Pages -> Build and deployment -> Source -> GitHub Actions`
+The Pages health gate retries for this reason.
 
 ## Project-path support
 
-GitHub Pages serves this repository below `/MediaBridge/`, not at the domain root. The fork therefore:
+GitHub Pages serves this repository below `/MediaBridge/`, not at the domain root. The web build therefore:
 
 - sets SvelteKit's base path from `WEB_BASE_PATH`;
 - resolves libav assets below that base path;

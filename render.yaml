@@ -29,3 +29,8 @@ services:
           https://invidious.nerdvpn.de,
           https://yt.chocolatemoo53.com,
           https://invidious.tiekoetter.com
+      - key: YOUTUBE_PIPED_INSTANCES
+        value: >-
+          https://pipedapi.kavin.rocks,
+          https://pipedapi.leptons.xyz,
+          https://pipedapi.nosebs.ru

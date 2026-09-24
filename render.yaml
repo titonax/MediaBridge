@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: mediabridge-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: >-
+      sh -lc 'export API_PORT="$PORT";
+      export API_URL="$RENDER_EXTERNAL_URL";
+      exec node src/cobalt'
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    numInstances: 1
+    maxShutdownDelaySeconds: 60
+    envVars:
+      - key: API_LISTEN_ADDRESS
+        value: 0.0.0.0
+      - key: CORS_WILDCARD
+        value: "0"
+      - key: CORS_URL
+        value: https://titonax.github.io

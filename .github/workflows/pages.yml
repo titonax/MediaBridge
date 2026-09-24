@@ -23,7 +23,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      WEB_BASE_PATH: /cobalt
+      WEB_BASE_PATH: /MediaBridge
       # Local-lab default: the GitHub Pages frontend talks to a cobalt API
       # running on the same computer as the browser. Set repository variable
       # WEB_DEFAULT_API to an HTTPS URL when a shared/public API is available.
@@ -61,7 +61,7 @@ jobs:
           test -f web/build/404.html
           test -d web/build/_app
           test -d web/build/_libav
-          grep -q '/cobalt/' web/build/index.html
+          grep -q '/MediaBridge/' web/build/index.html
           if grep -R -q 'api.example.invalid' web/build; then
             echo "invalid placeholder API leaked into Pages artifact"
             exit 1

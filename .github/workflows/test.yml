@@ -38,6 +38,16 @@ jobs:
         env:
           WEB_DEFAULT_API: https://api.dummy.example/
 
+  test-youtube-client-fallback:
+    name: youtube client fallback unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - run: node --test api/src/processing/helpers/youtube-client-fallback.test.js
+
   test-version-info:
     name: version-info unit tests
     runs-on: ubuntu-latest

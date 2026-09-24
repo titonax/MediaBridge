@@ -19,6 +19,7 @@ import { friendlyServiceName } from "../processing/service-alias.js";
 import { verifyStream } from "../stream/manage.js";
 import { createResponse, normalizeRequest, getIP } from "../processing/request.js";
 import { setupTunnelHandler } from "./itunnel.js";
+import { registerHealthRoute } from "./health.js";
 
 import * as APIKeys from "../security/api-keys.js";
 import * as Cookies from "../processing/cookie/manager.js";
@@ -121,6 +122,12 @@ export const runAPI = async (express, app, __dirname, isPrimary = true) => {
         ],
         ...corsConfig,
     }));
+
+    registerHealthRoute(app, {
+        version,
+        git,
+        startTimestamp,
+    });
 
     app.post('/', (req, res, next) => {
         if (!acceptRegex.test(req.header('Accept'))) {

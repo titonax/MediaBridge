@@ -7,7 +7,11 @@ import { Innertube, Platform, Session } from "youtubei.js";
 import { env } from "../../config.js";
 import { getCookie } from "../cookie/manager.js";
 import { getYouTubeSession } from "../helpers/youtube-session.js";
-import { getBasicInfoWithClientFallback } from "../helpers/youtube-client-fallback.js";
+import {
+    getBasicInfoWithClientFallback,
+    isYouTubeBotChallenge,
+} from "../helpers/youtube-client-fallback.js";
+import { resolveAlternateYouTubeInfo } from "../providers/youtube/index.js";
 
 // https://github.com/LuanRT/YouTube.js/pull/1052
 Platform.shim.eval = async (data) => {
@@ -261,6 +265,7 @@ export default async function (o) {
     }
 
     let info;
+    let youtubeProvider = "innertube";
     try {
         const resolved = await getBasicInfoWithClientFallback({
             getBasicInfo: yt.getBasicInfo.bind(yt),
@@ -291,6 +296,23 @@ export default async function (o) {
     }
 
     if (!info) return { error: "fetch.fail" };
+
+    if (isYouTubeBotChallenge(info) && env.ytInvidiousInstances?.length) {
+        const alternate = await resolveAlternateYouTubeInfo({
+            videoId: o.id,
+            instances: env.ytInvidiousInstances,
+            dispatcher: o.dispatcher,
+            fetchImpl: fetch,
+        });
+
+        if (alternate?.info) {
+            youtubeProvider = alternate.provider;
+            info = alternate.info;
+            console.info(
+                `[youtube] provider=${youtubeProvider} selected after innertube bot challenge`
+            );
+        }
+    }
 
     const playability = info.playability_status;
     const basicInfo = info.basic_info;
@@ -561,7 +583,8 @@ export default async function (o) {
         ...o,
         dispatcher: undefined,
         itag,
-        innertubeClient
+        innertubeClient,
+        youtubeProvider,
     };
 
     if (audio && o.isAudioOnly) {
@@ -573,7 +596,11 @@ export default async function (o) {
             urls = audio.uri;
         }
 
-        if (!clientsWithNoCipher.includes(innertubeClient) && innertube) {
+        if (
+            youtubeProvider === "innertube"
+            && !clientsWithNoCipher.includes(innertubeClient)
+            && innertube
+        ) {
             urls = await audio.decipher(innertube.session.player);
         }
 
@@ -620,7 +647,11 @@ export default async function (o) {
             filenameAttributes.resolution = `${video.width}x${video.height}`;
             filenameAttributes.extension = o.container === "auto" ? codecList[codec].container : o.container;
 
-            if (!clientsWithNoCipher.includes(innertubeClient) && innertube) {
+            if (
+                youtubeProvider === "innertube"
+                && !clientsWithNoCipher.includes(innertubeClient)
+                && innertube
+            ) {
                 video = await video.decipher(innertube.session.player);
                 audio = await audio.decipher(innertube.session.player);
             } else {

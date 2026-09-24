@@ -6,9 +6,23 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - web/**
+      - packages/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/pages.yml
   push:
     branches:
       - main
+    paths:
+      - web/**
+      - packages/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/pages.yml
 
 permissions:
   contents: read

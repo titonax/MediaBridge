@@ -19,23 +19,21 @@ const parseServiceList = (value, fallback = []) => new Set(
         : fallback
 );
 
-// services that are known to frequently fail due to external
-// factors (e.g. rate limiting). these remain visible in CI,
-// but do not fail the job unless promoted through TEST_STRICT_SERVICES.
-const finnicky = parseServiceList(
-    process.env.TEST_IGNORE_SERVICES,
-    ['bilibili', 'instagram', 'facebook', 'youtube', 'vk', 'twitter', 'reddit']
-);
+const policy = loadJSON('./src/util/service-test-policy.json') || { strict: [] };
 
-// strict services override the finnicky service-level allow-failure behavior.
-// per-test "canFail" remains explicit and is not overridden.
-const strictServices = parseServiceList(process.env.TEST_STRICT_SERVICES);
+// Live service checks depend on third-party sites and are therefore observed
+// by default. A service becomes a CI gate only after it is explicitly
+// promoted to strict in the version-controlled policy (or via an override).
+const strictServices = parseServiceList(
+    process.env.TEST_STRICT_SERVICES,
+    policy.strict || []
+);
 
 const appendGithubSummary = (service, result) => {
     const summaryPath = process.env.GITHUB_STEP_SUMMARY;
     if (!summaryPath) return;
 
-    const mode = strictServices.has(service) ? 'strict' : (finnicky.has(service) ? 'observed' : 'default');
+    const mode = strictServices.has(service) ? 'strict' : 'observed';
     const summary = [
         `### cobalt service regression: ${service}`,
         '',
@@ -62,9 +60,7 @@ const runTestsFor = async (service) => {
 
     for (const test of tests) {
         const { name, url, params, expected } = test;
-        const canFail = test.canFail || (
-            finnicky.has(service) && !strictServices.has(service)
-        );
+        const canFail = test.canFail || !strictServices.has(service);
 
         try {
             await runTest(url, params, expected);

@@ -297,10 +297,19 @@ export default async function (o) {
 
     if (!info) return { error: "fetch.fail" };
 
-    if (isYouTubeBotChallenge(info) && env.ytInvidiousInstances?.length) {
+    if (
+        isYouTubeBotChallenge(info)
+        && (
+            env.ytInvidiousInstances?.length
+            || env.ytPipedInstances?.length
+        )
+    ) {
         const alternate = await resolveAlternateYouTubeInfo({
             videoId: o.id,
-            instances: env.ytInvidiousInstances,
+            providerInstances: {
+                invidious: env.ytInvidiousInstances,
+                piped: env.ytPipedInstances,
+            },
             dispatcher: o.dispatcher,
             fetchImpl: fetch,
         });

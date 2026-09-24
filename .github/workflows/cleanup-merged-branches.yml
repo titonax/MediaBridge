@@ -1,0 +1,83 @@
+name: Cleanup merged branches
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cleanup-merged-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete branches whose PRs are already merged
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+
+            const repository = await github.rest.repos.get({ owner, repo });
+            const defaultBranch = repository.data.default_branch;
+
+            const branches = await github.paginate(
+              github.rest.repos.listBranches,
+              { owner, repo, per_page: 100 }
+            );
+
+            for (const branch of branches) {
+              if (branch.name === defaultBranch || branch.protected) {
+                continue;
+              }
+
+              const pulls = await github.paginate(
+                github.rest.pulls.list,
+                {
+                  owner,
+                  repo,
+                  state: 'closed',
+                  head: `${owner}:${branch.name}`,
+                  base: defaultBranch,
+                  per_page: 100,
+                }
+              );
+
+              const merged = pulls.some(pr => Boolean(pr.merged_at));
+              if (!merged) {
+                core.info(`keeping ${branch.name}: no merged PR found`);
+                continue;
+              }
+
+              core.info(`deleting merged branch ${branch.name}`);
+
+              try {
+                await github.rest.git.deleteRef({
+                  owner,
+                  repo,
+                  ref: `heads/${branch.name}`,
+                });
+              } catch (error) {
+                if (error.status === 422 || error.status === 404) {
+                  core.warning(
+                    `could not delete ${branch.name}: ${error.message}`
+                  );
+                  continue;
+                }
+
+                throw error;
+              }
+            }

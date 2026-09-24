@@ -13,6 +13,7 @@ on:
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - .github/workflows/pages.yml
+      - docs/github-pages.md
   push:
     branches:
       - main
@@ -23,6 +24,7 @@ on:
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - .github/workflows/pages.yml
+      - docs/github-pages.md
 
 permissions:
   contents: read
@@ -38,10 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEB_BASE_PATH: /MediaBridge
-      # Local-lab default: the GitHub Pages frontend talks to a cobalt API
-      # running on the same computer as the browser. Set repository variable
-      # WEB_DEFAULT_API to an HTTPS URL when a shared/public API is available.
-      WEB_DEFAULT_API: ${{ vars.WEB_DEFAULT_API || 'http://localhost:9000/' }}
+      WEB_DEFAULT_API: https://mediabridge-processing-api.onrender.com/
 
     steps:
       - name: Checkout
@@ -59,8 +58,43 @@ jobs:
       - name: Install exact dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Show processing API target
-        run: echo "WEB_DEFAULT_API=$WEB_DEFAULT_API"
+      - name: Verify remote processing API
+        shell: bash
+        run: |
+          case "$WEB_DEFAULT_API" in
+            https://*) ;;
+            *)
+              echo "WEB_DEFAULT_API must use HTTPS"
+              exit 1
+              ;;
+          esac
+
+          health_url="${WEB_DEFAULT_API%/}/healthz"
+          response=""
+
+          for attempt in 1 2 3 4 5; do
+            echo "health check attempt $attempt: $health_url"
+            if response="$(curl -fsS --max-time 30 "$health_url")"; then
+              break
+            fi
+
+            if [ "$attempt" -lt 5 ]; then
+              sleep 10
+            fi
+          done
+
+          if [ -z "$response" ]; then
+            echo "processing API did not return a health payload"
+            exit 1
+          fi
+
+          status="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(String(x.status ?? ""))' "$response")"
+          service="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(String(x.service ?? ""))' "$response")"
+
+          echo "processing API status=$status service=$service"
+
+          test "$status" = "ok"
+          test "$service" = "mediabridge-api"
 
       - name: Check web
         run: pnpm --dir web check
@@ -76,10 +110,22 @@ jobs:
           test -d web/build/_app
           test -d web/build/_libav
           grep -q '/MediaBridge/' web/build/index.html
+
+          if grep -R -q 'localhost:9000' web/build; then
+            echo "localhost API leaked into Pages artifact"
+            exit 1
+          fi
+
           if grep -R -q 'api.example.invalid' web/build; then
             echo "invalid placeholder API leaked into Pages artifact"
             exit 1
           fi
+
+          if ! grep -R -q 'mediabridge-processing-api.onrender.com' web/build; then
+            echo "remote MediaBridge API is missing from Pages artifact"
+            exit 1
+          fi
+
           echo "Pages artifact looks valid."
 
       - name: Setup Pages

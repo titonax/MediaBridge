@@ -48,5 +48,4 @@ jobs:
       - run: node api/src/util/test run-tests-for ${{ matrix.service }}
         env:
           HTTP_PROXY: ${{ secrets.API_EXTERNAL_PROXY }}
-          TEST_IGNORE_SERVICES: ${{ vars.TEST_IGNORE_SERVICES }}
           TEST_STRICT_SERVICES: ${{ vars.TEST_STRICT_SERVICES }}

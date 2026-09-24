@@ -69,7 +69,8 @@ this document is not final and will expand over time. feel free to improve it!
 | YOUTUBE_ALLOW_BETTER_AUDIO       | `1`                      |
 | ENABLE_DEPRECATED_YOUTUBE_HLS    | `key`                    |
 | YOUTUBE_PLAYER_ID                | `abcdefff`               |
-| YOUTUBE_INVIDIOUS_INSTANCES       | `https://inv.example`    |
+| YOUTUBE_INVIDIOUS_INSTANCES      | `https://inv.example`    |
+| YOUTUBE_PIPED_INSTANCES           | `https://piped.example`  |
 
 [*view details*](#service-specific)
 
@@ -286,6 +287,13 @@ comma-separated list of Invidious instances used only as an alternate YouTube me
 MediaBridge requests the Invidious video API with `local=true` so returned playback URLs are proxied by the selected Invidious instance rather than tied to that instance's YouTube egress session.
 
 Failed instances enter a short in-memory cooldown before being retried. Keep this list limited to instances you trust.
+
+### YOUTUBE_PIPED_INSTANCES
+comma-separated list of Piped API instances used after Innertube and Invidious when YouTube blocks the direct resolver path.
+
+MediaBridge calls `/streams/:videoId` and adapts Piped's `videoStreams` and `audioStreams` into the same internal model used by the native YouTube resolver. This keeps quality selection, merging and tunnel handling in one pipeline.
+
+Failed Piped instances enter the same short in-memory cooldown pattern as the Invidious provider. Keep the list limited to instances you trust.
 
 ### YOUTUBE_ALLOW_BETTER_AUDIO
 when set to `1`, cobalt will try to use higher quality audio if user requests it via `youtubeBetterAudio`. will negatively impact the rate limit of a secondary youtube client with a session.

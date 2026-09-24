@@ -1,21 +1,22 @@
 services:
   - type: web
-    name: mediabridge-api
-    runtime: docker
+    name: mediabridge-processing-api
+    runtime: node
     plan: free
     region: frankfurt
     branch: main
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: >-
-      sh -lc 'export API_PORT="$PORT";
-      export API_URL="$RENDER_EXTERNAL_URL";
-      exec node src/cobalt'
+    buildCommand: pnpm install --frozen-lockfile --prod
+    startCommand: >-
+      API_PORT=$PORT
+      API_URL=$RENDER_EXTERNAL_URL
+      pnpm --dir api start
     healthCheckPath: /healthz
     autoDeployTrigger: checksPass
     numInstances: 1
     maxShutdownDelaySeconds: 60
     envVars:
+      - key: NODE_VERSION
+        value: 24.21.0
       - key: API_LISTEN_ADDRESS
         value: 0.0.0.0
       - key: CORS_WILDCARD

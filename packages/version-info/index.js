@@ -1,7 +1,9 @@
-import { existsSync }  from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join, parse } from 'node:path';
-import { cwd }         from 'node:process';
-import { readFile }    from 'node:fs/promises';
+import { cwd } from 'node:process';
+import { readFile } from 'node:fs/promises';
+
+const UNKNOWN = 'unknown';
 
 const findFile = (file) => {
     let dir = cwd();
@@ -18,37 +20,66 @@ const findFile = (file) => {
 const root = findFile('.git');
 const pack = findFile('package.json');
 
-const readGit = (filename) => {
+const readGit = async (filename) => {
     if (!root) {
-        throw 'no git repository root found';
+        return;
     }
 
-    return readFile(join(root, filename), 'utf8');
+    try {
+        return await readFile(join(root, filename), 'utf8');
+    } catch {
+        return;
+    }
+}
+
+const firstEnv = (...keys) => {
+    for (const key of keys) {
+        const value = process.env[key];
+        if (value) return value;
+    }
 }
 
 export const getCommit = async () => {
-    return (await readGit('.git/logs/HEAD'))
-            ?.split('\n')
-            ?.filter(String)
-            ?.pop()
-            ?.split(' ')[1];
+    const envCommit = firstEnv(
+        'MEDIABRIDGE_GIT_COMMIT',
+        'RENDER_GIT_COMMIT',
+        'GITHUB_SHA'
+    );
+    if (envCommit) return envCommit;
+
+    const log = await readGit('.git/logs/HEAD');
+    return log
+        ?.split('\n')
+        ?.filter(String)
+        ?.pop()
+        ?.split(' ')[1]
+        || UNKNOWN;
 }
 
 export const getBranch = async () => {
-    if (process.env.CF_PAGES_BRANCH) {
-        return process.env.CF_PAGES_BRANCH;
-    }
+    const envBranch = firstEnv(
+        'MEDIABRIDGE_GIT_BRANCH',
+        'RENDER_GIT_BRANCH',
+        'CF_PAGES_BRANCH',
+        'WORKERS_CI_BRANCH',
+        'GITHUB_REF_NAME'
+    );
+    if (envBranch) return envBranch;
 
-    if (process.env.WORKERS_CI_BRANCH) {
-        return process.env.WORKERS_CI_BRANCH;
-    }
-
-    return (await readGit('.git/HEAD'))
-            ?.replace(/^ref: refs\/heads\//, '')
-            ?.trim();
+    const head = await readGit('.git/HEAD');
+    return head
+        ?.replace(/^ref: refs\/heads\//, '')
+        ?.trim()
+        || UNKNOWN;
 }
 
 export const getRemote = async () => {
+    const envRemote = firstEnv(
+        'MEDIABRIDGE_GIT_REMOTE',
+        'RENDER_GIT_REPO_SLUG'
+    );
+    if (envRemote) return envRemote;
+
     let remote = (await readGit('.git/config'))
                     ?.split('\n')
                     ?.find(line => line.includes('url = '))
@@ -62,11 +93,7 @@ export const getRemote = async () => {
 
     remote = remote?.replace(/\.git$/, '');
 
-    if (!remote) {
-        throw 'could not parse remote';
-    }
-
-    return remote;
+    return remote || UNKNOWN;
 }
 
 export const getVersion = async () => {

@@ -122,6 +122,10 @@ export const loadEnvs = (env = process.env) => {
         ytSessionInnertubeClient: env.YOUTUBE_SESSION_INNERTUBE_CLIENT,
         ytAllowBetterAudio: env.YOUTUBE_ALLOW_BETTER_AUDIO !== "0",
         ytPlayerIds: env.YOUTUBE_PLAYER_ID?.split(',')?.map(p => p.trim()),
+        ytInvidiousInstances: env.YOUTUBE_INVIDIOUS_INSTANCES
+            ?.split(',')
+            ?.map(instance => instance.trim())
+            ?.filter(Boolean),
 
         // "never" | "session" | "always"
         forceLocalProcessing: env.FORCE_LOCAL_PROCESSING ?? "never",
@@ -157,6 +161,19 @@ export const validateEnvs = async (env) => {
         console.error("CUSTOM_INNERTUBE_CLIENT is invalid. Provided client is not supported.");
         console.error(`Supported clients are: ${Constants.SUPPORTED_CLIENTS.join(', ')}\n`);
         throw new Error("Invalid CUSTOM_INNERTUBE_CLIENT");
+    }
+
+    if (env.ytInvidiousInstances) {
+        for (const instance of env.ytInvidiousInstances) {
+            try {
+                const url = new URL(instance);
+                if (!["http:", "https:"].includes(url.protocol)) {
+                    throw new Error("unsupported protocol");
+                }
+            } catch {
+                throw new Error(`Invalid YOUTUBE_INVIDIOUS_INSTANCES entry: ${instance}`);
+            }
+        }
     }
 
     if (env.forceLocalProcessing && !forceLocalProcessingOptions.includes(env.forceLocalProcessing)) {

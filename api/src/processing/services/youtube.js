@@ -7,6 +7,7 @@ import { Innertube, Platform, Session } from "youtubei.js";
 import { env } from "../../config.js";
 import { getCookie } from "../cookie/manager.js";
 import { getYouTubeSession } from "../helpers/youtube-session.js";
+import { getBasicInfoWithClientFallback } from "../helpers/youtube-client-fallback.js";
 
 // https://github.com/LuanRT/YouTube.js/pull/1052
 Platform.shim.eval = async (data) => {
@@ -261,7 +262,14 @@ export default async function (o) {
 
     let info;
     try {
-        info = await yt.getBasicInfo(o.id, { client: innertubeClient });
+        const resolved = await getBasicInfoWithClientFallback({
+            getBasicInfo: yt.getBasicInfo.bind(yt),
+            videoId: o.id,
+            preferredClient: innertubeClient,
+        });
+
+        info = resolved.info;
+        innertubeClient = resolved.client;
     } catch (e) {
         if (e?.info) {
             let errorInfo;

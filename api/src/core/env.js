@@ -126,6 +126,10 @@ export const loadEnvs = (env = process.env) => {
             ?.split(',')
             ?.map(instance => instance.trim())
             ?.filter(Boolean),
+        ytPipedInstances: env.YOUTUBE_PIPED_INSTANCES
+            ?.split(',')
+            ?.map(instance => instance.trim())
+            ?.filter(Boolean),
 
         // "never" | "session" | "always"
         forceLocalProcessing: env.FORCE_LOCAL_PROCESSING ?? "never",
@@ -163,15 +167,22 @@ export const validateEnvs = async (env) => {
         throw new Error("Invalid CUSTOM_INNERTUBE_CLIENT");
     }
 
-    if (env.ytInvidiousInstances) {
-        for (const instance of env.ytInvidiousInstances) {
+    const youtubeProviderInstanceLists = [
+        ["YOUTUBE_INVIDIOUS_INSTANCES", env.ytInvidiousInstances],
+        ["YOUTUBE_PIPED_INSTANCES", env.ytPipedInstances],
+    ];
+
+    for (const [name, instances] of youtubeProviderInstanceLists) {
+        if (!instances) continue;
+
+        for (const instance of instances) {
             try {
                 const url = new URL(instance);
                 if (!["http:", "https:"].includes(url.protocol)) {
                     throw new Error("unsupported protocol");
                 }
             } catch {
-                throw new Error(`Invalid YOUTUBE_INVIDIOUS_INSTANCES entry: ${instance}`);
+                throw new Error(`Invalid ${name} entry: ${instance}`);
             }
         }
     }

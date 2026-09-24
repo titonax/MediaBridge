@@ -1,18 +1,28 @@
 #!/bin/bash
 set -e
 
-# thx: https://stackoverflow.com/a/27601038
 waitport() {
     ATTEMPTS=50
-    while [ $((ATTEMPTS-=1)) -gt 0 ] && ! nc -z localhost $1; do   
+    while [ $((ATTEMPTS-=1)) -gt 0 ] && ! nc -z localhost $1; do
         sleep 0.1
     done
 
     [ "$ATTEMPTS" != 0 ] || exit 1
 }
 
+test_health() {
+    HEALTH_RESPONSE=$(curl -fsS -m 3 http://localhost:3000/healthz)
+
+    echo "HEALTH_RESPONSE=$HEALTH_RESPONSE"
+
+    [ "$(echo "$HEALTH_RESPONSE" | jq -r .status)" = "ok" ] || exit 1
+    [ "$(echo "$HEALTH_RESPONSE" | jq -r .service)" = "mediabridge-api" ] || exit 1
+}
+
 test_api() {
     waitport 3000
+    test_health
+
     curl -m 3 http://localhost:3000/
     API_RESPONSE=$(curl -m 10 http://localhost:3000/ \
          -X POST \

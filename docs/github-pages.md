@@ -5,7 +5,7 @@ This fork can build the SvelteKit frontend as a GitHub Pages project site.
 Expected URL:
 
 ```
-https://titonax.github.io/cobalt/
+https://titonax.github.io/MediaBridge/
 ```
 
 ## Architecture
@@ -16,7 +16,7 @@ For the local test setup used by this fork:
 
 ```
 GitHub Pages
-https://titonax.github.io/cobalt/
+https://titonax.github.io/MediaBridge/
             |
             | browser requests
             v
@@ -50,7 +50,7 @@ It should return cobalt instance information as JSON.
 Then open:
 
 ```
-https://titonax.github.io/cobalt/
+https://titonax.github.io/MediaBridge/
 ```
 
 The Pages build defaults to `http://localhost:9000/`, so pasted media URLs can now be processed by the local API.
@@ -100,7 +100,7 @@ GitHub Pages must be enabled once:
 
 ## Project-path support
 
-GitHub Pages serves this repository below `/cobalt/`, not at the domain root. The fork therefore:
+GitHub Pages serves this repository below `/MediaBridge/`, not at the domain root. The fork therefore:
 
 - sets SvelteKit's base path from `WEB_BASE_PATH`;
 - resolves libav assets below that base path;

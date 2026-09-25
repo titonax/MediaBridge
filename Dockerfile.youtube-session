@@ -38,6 +38,12 @@ RUN apk add --no-cache \
 COPY --from=yt-session-source /app/potoken-generator.py /opt/yt-session/potoken-generator.py
 COPY --from=yt-session-source /app/potoken_generator /opt/yt-session/potoken_generator
 COPY --from=yt-session-source /app/requirements.txt /opt/yt-session/requirements.txt
+COPY docker/patch-youtube-session-generator.py /opt/yt-session/patch-youtube-session-generator.py
+
+RUN python3 /opt/yt-session/patch-youtube-session-generator.py \
+      /opt/yt-session/potoken_generator/extractor.py \
+    && rm /opt/yt-session/patch-youtube-session-generator.py \
+    && grep -q 'sandbox=False' /opt/yt-session/potoken_generator/extractor.py
 
 RUN python3 -m venv /opt/yt-session/venv \
     && /opt/yt-session/venv/bin/pip install --no-cache-dir \

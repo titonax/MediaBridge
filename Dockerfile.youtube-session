@@ -1,0 +1,59 @@
+FROM ghcr.io/imputnet/yt-session-generator:webserver AS yt-session-source
+
+FROM node:24-alpine AS build
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+WORKDIR /app
+COPY . /app
+
+RUN corepack enable
+RUN apk add --no-cache python3 alpine-sdk
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --prod --frozen-lockfile
+
+RUN pnpm deploy --filter=@imput/cobalt-api --prod /prod/api
+
+FROM node:24-alpine AS api-youtube-session
+
+ENV YOUTUBE_SESSION_SERVER="http://127.0.0.1:8080"
+ENV YOUTUBE_SESSION_INNERTUBE_CLIENT="MWEB"
+
+WORKDIR /app
+
+RUN apk add --no-cache \
+      ca-certificates \
+      chromium \
+      chromium-chromedriver \
+      freetype \
+      harfbuzz \
+      nss \
+      py3-pip \
+      python3 \
+      su-exec \
+      ttf-freefont \
+      xvfb
+
+COPY --from=yt-session-source /app/potoken-generator.py /opt/yt-session/potoken-generator.py
+COPY --from=yt-session-source /app/potoken_generator /opt/yt-session/potoken_generator
+COPY --from=yt-session-source /app/requirements.txt /opt/yt-session/requirements.txt
+
+RUN python3 -m venv /opt/yt-session/venv \
+    && /opt/yt-session/venv/bin/pip install --no-cache-dir \
+       -r /opt/yt-session/requirements.txt \
+    && find /opt/yt-session/venv -path '*/nodriver/core/browser.py' \
+       -exec sed -i 's/await self.sleep(0.5)/await self.sleep(2)/' {} \;
+
+COPY --from=build --chown=node:node /prod/api /app
+COPY --from=build --chown=node:node /app/.git /app/.git
+COPY docker/start-youtube-session.sh /usr/local/bin/start-youtube-session
+
+RUN chmod 0755 /usr/local/bin/start-youtube-session
+
+EXPOSE 9000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD node -e "const p=process.env.API_PORT||9000; fetch('http://127.0.0.1:'+p+'/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+
+CMD ["/usr/local/bin/start-youtube-session"]

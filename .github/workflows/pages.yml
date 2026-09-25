@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEB_BASE_PATH: /MediaBridge
-      WEB_DEFAULT_API: https://mediabridge-processing-api.onrender.com/
+      WEB_DEFAULT_API: https://mediabridge-api-ghcr-production.up.railway.app/
 
     steps:
       - name: Checkout
@@ -121,7 +121,7 @@ jobs:
             exit 1
           fi
 
-          if ! grep -R -q 'mediabridge-processing-api.onrender.com' web/build; then
+          if ! grep -R -q 'mediabridge-api-ghcr-production.up.railway.app' web/build; then
             echo "remote MediaBridge API is missing from Pages artifact"
             exit 1
           fi

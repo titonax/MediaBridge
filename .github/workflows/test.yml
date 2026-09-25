@@ -66,6 +66,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
       - run: node --test api/src/processing/helpers/youtube-session.test.js api/src/processing/helpers/youtube-session-retry.test.js
 
   test-youtube-client-fallback:

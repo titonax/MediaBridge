@@ -1,6 +1,6 @@
 # ADR 0003: co-locate the YouTube PO-token generator
 
-- Status: accepted
+- Status: superseded by ADR 0004
 - Date: 2026-09-25
 
 ## Context

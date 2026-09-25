@@ -1,13 +1,14 @@
 import HLS from "hls-parser";
 import ivm from "isolated-vm";
 
-import { fetch, Request } from "undici";
-import { Innertube, Platform, Session } from "youtubei.js";
+import { fetch, Headers, Request } from "undici";
+import { Constants, Innertube, Platform, Session } from "youtubei.js";
 
 import { env } from "../../config.js";
 import { getCookie } from "../cookie/manager.js";
 import { getYouTubeSession } from "../helpers/youtube-session.js";
 import { retryYouTubeWithSession } from "../helpers/youtube-session-retry.js";
+import { getYouTubeVisitorData } from "../helpers/youtube-visitor-data.js";
 import {
     getBasicInfoWithClientFallback,
     isYouTubeBotChallenge,
@@ -29,15 +30,23 @@ Platform.shim.eval = async (data) => {
 }
 
 const PLAYER_REFRESH_PERIOD = 1000 * 60 * 15; // ms
+const ANDROID_VR_CLIENT = "ANDROID_VR";
 
 const innertubeCache = {
     anonymous: {
         innertube: undefined,
         lastRefreshedAt: 0,
+        visitorData: undefined,
+    },
+    androidVr: {
+        innertube: undefined,
+        lastRefreshedAt: 0,
+        visitorData: undefined,
     },
     session: {
         innertube: undefined,
         lastRefreshedAt: 0,
+        visitorData: undefined,
     },
 };
 
@@ -72,18 +81,29 @@ const hlsCodecList = {
     }
 }
 
-const clientsWithNoCipher = ['IOS', 'ANDROID', 'YTSTUDIO_ANDROID', 'YTMUSIC_ANDROID'];
+const clientsWithNoCipher = [
+    'IOS',
+    'ANDROID',
+    ANDROID_VR_CLIENT,
+    'YTSTUDIO_ANDROID',
+    'YTMUSIC_ANDROID'
+];
 
 const videoQualities = [144, 240, 360, 480, 720, 1080, 1440, 2160, 4320];
 
-const cloneInnertube = async (customFetch, useSession) => {
+const cloneInnertube = async (customFetch, useSession, visitorData) => {
     const cache = innertubeCache[
-        useSession ? "session" : "anonymous"
+        useSession
+            ? "session"
+            : visitorData
+                ? "androidVr"
+                : "anonymous"
     ];
 
     const shouldRefreshPlayer =
         !cache.innertube
-        || cache.lastRefreshedAt + PLAYER_REFRESH_PERIOD < Date.now();
+        || cache.lastRefreshedAt + PLAYER_REFRESH_PERIOD < Date.now()
+        || cache.visitorData !== visitorData;
 
     const rawCookie = getCookie("youtube");
     const cookie = rawCookie?.toString();
@@ -121,11 +141,12 @@ const cloneInnertube = async (customFetch, useSession) => {
             retrieve_player: retrievePlayer,
             cookie,
             po_token: sessionTokens?.potoken,
-            visitor_data: sessionTokens?.visitor_data,
+            visitor_data: sessionTokens?.visitor_data ?? visitorData,
             player_id,
         });
 
         cache.lastRefreshedAt = Date.now();
+        cache.visitorData = visitorData;
     }
 
     const base = cache.innertube;
@@ -262,6 +283,14 @@ export default async function (o) {
         innertubeClient = env.ytSessionInnertubeClient || "WEB_EMBEDDED";
     }
 
+    const visitorData = innertubeClient === ANDROID_VR_CLIENT
+        ? await getYouTubeVisitorData({
+            videoId: o.id,
+            dispatcher: o.dispatcher,
+            fetchImpl: fetch,
+        })
+        : undefined;
+
     const customFetch = (input, init) => {
         const url = typeof input === "string"
                   ? new URL(input)
@@ -276,8 +305,20 @@ export default async function (o) {
                 : undefined
         );
 
+        const headers = new Headers(
+            init?.headers ?? request.headers
+        );
+
+        if (innertubeClient === ANDROID_VR_CLIENT) {
+            headers.set(
+                "User-Agent",
+                Constants.CLIENTS.ANDROID_VR.USER_AGENT
+            );
+        }
+
         return fetch(request, {
             ...init,
+            headers,
             dispatcher: o.dispatcher,
         });
     };
@@ -286,7 +327,8 @@ export default async function (o) {
     try {
         yt = await cloneInnertube(
             customFetch,
-            useSession
+            useSession,
+            visitorData
         );
     } catch (e) {
         if (e === "no_session_tokens") {

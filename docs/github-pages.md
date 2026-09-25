@@ -13,7 +13,7 @@ https://titonax.github.io/MediaBridge/
 The Pages build currently targets:
 
 ```
-https://mediabridge-processing-api.onrender.com/
+https://mediabridge-api-ghcr-production.up.railway.app/
 ```
 
 The API exposes a stable liveness endpoint:
@@ -53,7 +53,7 @@ https://titonax.github.io/MediaBridge/
                   |
                   | HTTPS
                   v
-https://mediabridge-processing-api.onrender.com/
+https://mediabridge-api-ghcr-production.up.railway.app/
                   |
                   +-- /healthz
                   +-- media resolvers
@@ -63,11 +63,9 @@ https://mediabridge-processing-api.onrender.com/
 
 GitHub Pages never runs the Node backend itself.
 
-## Render development-service behavior
+## Railway processing service
 
-The initial processing instance uses a development/free Render service. It can spin down after inactivity, so the first request after a quiet period can take longer while the service wakes.
-
-The Pages health gate retries for this reason.
+The processing API currently runs on Railway from the MediaBridge GHCR image. The Pages health gate verifies the public API before building the static site.
 
 ## Project-path support
 

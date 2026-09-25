@@ -10,7 +10,6 @@ on:
       - packages/**
       - Dockerfile.youtube-session
       - docker/start-youtube-session.sh
-      - docker/patch-youtube-session-generator.py
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - .github/workflows/youtube-session-image.yml
@@ -22,7 +21,6 @@ on:
       - packages/**
       - Dockerfile.youtube-session
       - docker/start-youtube-session.sh
-      - docker/patch-youtube-session-generator.py
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - .github/workflows/youtube-session-image.yml
@@ -49,9 +47,6 @@ jobs:
 
       - name: Validate startup script
         run: sh -n docker/start-youtube-session.sh
-
-      - name: Validate session-generator patch
-        run: python3 -m py_compile docker/patch-youtube-session-generator.py
 
       - name: Set up QEMU
         if: github.event_name != 'pull_request'

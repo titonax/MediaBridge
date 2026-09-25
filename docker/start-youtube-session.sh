@@ -1,11 +1,23 @@
 #!/bin/sh
 set -eu
 
-: "${API_PORT:=9000}"
+if [ -z "${API_PORT:-}" ]; then
+    API_PORT="${PORT:-9000}"
+fi
+
 : "${API_LISTEN_ADDRESS:=0.0.0.0}"
 : "${YOUTUBE_SESSION_SERVER:=http://127.0.0.1:8080}"
 : "${YOUTUBE_SESSION_INNERTUBE_CLIENT:=MWEB}"
 
+if [ -z "${API_URL:-}" ]; then
+    if [ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ]; then
+        API_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
+    elif [ -n "${RENDER_EXTERNAL_URL:-}" ]; then
+        API_URL="${RENDER_EXTERNAL_URL}"
+    fi
+fi
+
+export API_URL
 export API_PORT
 export API_LISTEN_ADDRESS
 export YOUTUBE_SESSION_SERVER

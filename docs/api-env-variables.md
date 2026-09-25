@@ -65,7 +65,7 @@ this document is not final and will expand over time. feel free to improve it!
 |:---------------------------------|:-------------------------|
 | CUSTOM_INNERTUBE_CLIENT          | `IOS`                    |
 | YOUTUBE_SESSION_SERVER           | `http://localhost:8080/` |
-| YOUTUBE_SESSION_INNERTUBE_CLIENT | `WEB_EMBEDDED`           |
+| YOUTUBE_SESSION_INNERTUBE_CLIENT | `MWEB`                  |
 | YOUTUBE_ALLOW_BETTER_AUDIO       | `1`                      |
 | ENABLE_DEPRECATED_YOUTUBE_HLS    | `key`                    |
 | YOUTUBE_PLAYER_ID                | `abcdefff`               |

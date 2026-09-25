@@ -7,6 +7,7 @@ import { Innertube, Platform, Session } from "youtubei.js";
 import { env } from "../../config.js";
 import { getCookie } from "../cookie/manager.js";
 import { getYouTubeSession } from "../helpers/youtube-session.js";
+import { retryYouTubeWithSession } from "../helpers/youtube-session-retry.js";
 import {
     getBasicInfoWithClientFallback,
     isYouTubeBotChallenge,
@@ -29,7 +30,16 @@ Platform.shim.eval = async (data) => {
 
 const PLAYER_REFRESH_PERIOD = 1000 * 60 * 15; // ms
 
-let innertube, lastRefreshedAt;
+const innertubeCache = {
+    anonymous: {
+        innertube: undefined,
+        lastRefreshedAt: 0,
+    },
+    session: {
+        innertube: undefined,
+        lastRefreshedAt: 0,
+    },
+};
 
 const codecList = {
     h264: {
@@ -67,52 +77,73 @@ const clientsWithNoCipher = ['IOS', 'ANDROID', 'YTSTUDIO_ANDROID', 'YTMUSIC_ANDR
 const videoQualities = [144, 240, 360, 480, 720, 1080, 1440, 2160, 4320];
 
 const cloneInnertube = async (customFetch, useSession) => {
-    const shouldRefreshPlayer = lastRefreshedAt + PLAYER_REFRESH_PERIOD < new Date();
+    const cache = innertubeCache[
+        useSession ? "session" : "anonymous"
+    ];
 
-    const rawCookie = getCookie('youtube');
+    const shouldRefreshPlayer =
+        !cache.innertube
+        || cache.lastRefreshedAt + PLAYER_REFRESH_PERIOD < Date.now();
+
+    const rawCookie = getCookie("youtube");
     const cookie = rawCookie?.toString();
 
-    const sessionTokens = getYouTubeSession();
-    const retrieve_player = Boolean(sessionTokens || cookie);
+    const sessionTokens = useSession
+        ? getYouTubeSession()
+        : undefined;
 
-    if (useSession && env.ytSessionServer && !sessionTokens?.potoken) {
+    if (
+        useSession
+        && (
+            !sessionTokens?.potoken
+            || !sessionTokens?.visitor_data
+        )
+    ) {
         throw "no_session_tokens";
     }
 
-    if (!innertube || shouldRefreshPlayer) {
+    const retrievePlayer = Boolean(
+        (useSession && sessionTokens)
+        || cookie
+    );
+
+    if (shouldRefreshPlayer) {
         let player_id;
+
         if (env.ytPlayerIds) {
             player_id = env.ytPlayerIds[
                 Math.floor(Math.random() * env.ytPlayerIds.length)
             ];
         }
 
-        innertube = await Innertube.create({
+        cache.innertube = await Innertube.create({
             fetch: customFetch,
-            retrieve_player,
+            retrieve_player: retrievePlayer,
             cookie,
-            po_token: useSession ? sessionTokens?.potoken : undefined,
-            visitor_data: useSession ? sessionTokens?.visitor_data : undefined,
+            po_token: sessionTokens?.potoken,
+            visitor_data: sessionTokens?.visitor_data,
             player_id,
         });
-        lastRefreshedAt = +new Date();
+
+        cache.lastRefreshedAt = Date.now();
     }
 
+    const base = cache.innertube;
+
     const session = new Session(
-        innertube.session.context,
-        innertube.session.api_key,
-        innertube.session.api_version,
-        innertube.session.account_index,
-        innertube.session.config_data,
-        innertube.session.player,
+        base.session.context,
+        base.session.api_key,
+        base.session.api_version,
+        base.session.account_index,
+        base.session.config_data,
+        base.session.player,
         cookie,
-        customFetch ?? innertube.session.http.fetch,
-        innertube.session.cache,
+        customFetch ?? base.session.http.fetch,
+        base.session.cache,
         sessionTokens?.potoken
     );
 
-    const yt = new Innertube(session);
-    return yt;
+    return new Innertube(session);
 }
 
 const getHlsVariants = async (hlsManifest, dispatcher) => {
@@ -231,27 +262,30 @@ export default async function (o) {
         innertubeClient = env.ytSessionInnertubeClient || "WEB_EMBEDDED";
     }
 
+    const customFetch = (input, init) => {
+        const url = typeof input === "string"
+                  ? new URL(input)
+                  : input instanceof URL
+                    ? input
+                    : new URL(input.url);
+
+        const request = new Request(
+            url,
+            input instanceof Platform.shim.Request
+                ? input
+                : undefined
+        );
+
+        return fetch(request, {
+            ...init,
+            dispatcher: o.dispatcher,
+        });
+    };
+
     let yt;
     try {
         yt = await cloneInnertube(
-            (input, init) => {
-                const url = typeof input === 'string'
-                          ? new URL(input)
-                          : input instanceof URL
-                            ? input
-                            : new URL(input.url);
-
-                const request = new Request(
-                    url,
-                    input instanceof Platform.shim.Request
-                    ? input : undefined
-                );
-
-                return fetch(request, {
-                    ...init,
-                    dispatcher: o.dispatcher
-                });
-            },
+            customFetch,
             useSession
         );
     } catch (e) {
@@ -296,6 +330,30 @@ export default async function (o) {
     }
 
     if (!info) return { error: "fetch.fail" };
+
+    if (
+        isYouTubeBotChallenge(info)
+        && !useSession
+        && env.ytSessionServer
+    ) {
+        const sessionRetry = await retryYouTubeWithSession({
+            info,
+            videoId: o.id,
+            sessionTokens: getYouTubeSession(),
+            client: env.ytSessionInnertubeClient || "MWEB",
+            createClient: () => cloneInnertube(
+                customFetch,
+                true
+            ),
+        });
+
+        if (sessionRetry.usedSession) {
+            info = sessionRetry.info;
+            yt = sessionRetry.yt;
+            innertubeClient = sessionRetry.client;
+            useSession = true;
+        }
+    }
 
     if (
         isYouTubeBotChallenge(info)

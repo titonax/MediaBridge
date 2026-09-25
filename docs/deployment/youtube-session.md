@@ -66,3 +66,28 @@ After deployment:
 If YouTube still returns the bot challenge after a valid co-located PO-token
 retry, the remaining problem is the egress reputation itself rather than
 session-generator placement.
+
+
+## Railway
+
+For a Railway service connected to the MediaBridge repository, select the
+specialized Dockerfile by setting:
+
+```
+RAILWAY_DOCKERFILE_PATH=Dockerfile.youtube-session
+```
+
+The startup wrapper automatically maps Railway's `PORT` to MediaBridge's
+`API_PORT`. If `API_URL` is not set and Railway provides
+`RAILWAY_PUBLIC_DOMAIN`, the public API URL is derived automatically as
+`https://$RAILWAY_PUBLIC_DOMAIN`.
+
+After changing `RAILWAY_DOCKERFILE_PATH`, redeploy the service. A successful
+startup should show both:
+
+```
+[mediabridge] YouTube PO-token session is ready
+[✓] poToken & visitor_data loaded successfully!
+```
+
+before testing YouTube.

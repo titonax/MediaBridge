@@ -41,7 +41,9 @@ COPY --from=yt-session-source /app/requirements.txt /opt/yt-session/requirements
 
 RUN python3 -m venv /opt/yt-session/venv \
     && /opt/yt-session/venv/bin/pip install --no-cache-dir \
-       -r /opt/yt-session/requirements.txt
+       -r /opt/yt-session/requirements.txt \
+    && find /opt/yt-session/venv -path '*/nodriver/core/browser.py' \
+       -exec sed -i 's/await self.sleep(0.5)/await self.sleep(2)/' {} \;
 
 COPY --from=build --chown=node:node /prod/api /app
 COPY --from=build --chown=node:node /app/.git /app/.git

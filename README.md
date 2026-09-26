@@ -1,3 +1,11 @@
+# MediaBridge-GPT
+
+MediaBridge-GPT is a Cobalt-derived media downloader maintained in this repository.
+
+- Web: https://titonax.github.io/MediaBridge-GPT/
+- Repository: https://github.com/titonax/MediaBridge-GPT
+- Upstream: https://github.com/imputnet/cobalt
+
 <div align="center">
     <br/>
     <p>
@@ -29,7 +37,7 @@ cobalt is a media downloader that doesn't piss you off. it's friendly, efficient
 
 paste the link, get the file, move on. that simple, just how it should be.
 
-### cobalt monorepo
+### MediaBridge-GPT monorepo
 this monorepo includes source code for api, frontend, and related packages:
 - [api tree & readme](/api/)
 - [web tree & readme](/web/)

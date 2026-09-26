@@ -69,7 +69,28 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
         convertGif: getSetting("save", "convertGif"),
     }
 
-    const response = await API.request(selectedRequest);
+    let response = await API.request(selectedRequest);
+
+    /*
+        A direct cross-origin media URL cannot reliably trigger a browser
+        download. Firefox/Chromium may simply open playable media in a new tab
+        because the remote server controls Content-Disposition and the HTML
+        download attribute does not apply reliably cross-origin.
+
+        When the selected saving method is "download", retry redirect responses
+        through the API tunnel. This keeps "share", "copy" and "ask" behavior
+        unchanged while making the download action behave like a download.
+    */
+    if (
+        response?.status === "redirect"
+        && get(settings).save.savingMethod === "download"
+        && !selectedRequest.alwaysProxy
+    ) {
+        response = await API.request({
+            ...selectedRequest,
+            alwaysProxy: true,
+        });
+    }
 
     if (!response) {
         downloadButtonState.set("error");

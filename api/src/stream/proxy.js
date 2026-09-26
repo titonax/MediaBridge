@@ -3,6 +3,7 @@ import { create as contentDisposition } from "content-disposition-header";
 
 import { destroyInternalStream } from "./manage.js";
 import { getHeaders, closeRequest, closeResponse, pipe } from "./shared.js";
+import { mergeRequestHeaders } from "./request-headers.js";
 
 const defaultAgent = new Agent();
 
@@ -19,10 +20,13 @@ export default async function (streamInfo, res) {
         res.setHeader('Content-disposition', contentDisposition(streamInfo.filename));
 
         const { body: stream, headers, statusCode } = await request(streamInfo.urls, {
-            headers: {
-                ...getHeaders(streamInfo.service),
-                Range: streamInfo.range
-            },
+            headers: mergeRequestHeaders(
+                getHeaders(streamInfo.service),
+                streamInfo.headers,
+                {
+                    range: streamInfo.range,
+                }
+            ),
             signal: abortController.signal,
             maxRedirections: 16,
             dispatcher: defaultAgent,

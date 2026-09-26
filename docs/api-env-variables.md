@@ -64,6 +64,7 @@ this document is not final and will expand over time. feel free to improve it!
 | name                             | value example            |
 |:---------------------------------|:-------------------------|
 | CUSTOM_INNERTUBE_CLIENT          | `IOS`                    |
+| CUSTOM_INNERTUBE_CONTEXT         | `{"clientVersion":"1.02"}` |
 | YOUTUBE_SESSION_SERVER           | `http://localhost:8080/` |
 | YOUTUBE_SESSION_INNERTUBE_CLIENT | `MWEB`                  |
 | YOUTUBE_ALLOW_BETTER_AUDIO       | `1`                      |
@@ -262,7 +263,24 @@ the value is a number, either `0` or `1`.
 ### CUSTOM_INNERTUBE_CLIENT
 innertube client that will be used instead of the default one.
 
-the value is a string.
+the value is a string. clients that are not built into `youtubei.js` can be
+used when `CUSTOM_INNERTUBE_CONTEXT` describes their client context.
+
+### CUSTOM_INNERTUBE_CONTEXT
+JSON object merged into `context.client` for a custom Innertube client.
+this is required when `CUSTOM_INNERTUBE_CLIENT` names a client unsupported
+by the installed `youtubei.js` version.
+
+for example, the current `visionOS` context used by yt-dlp can be configured
+without changing cobalt code:
+
+```
+CUSTOM_INNERTUBE_CLIENT=VISIONOS
+CUSTOM_INNERTUBE_CONTEXT={"clientVersion":"1.02","deviceMake":"Apple","deviceModel":"RealityDevice17,1","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15","osName":"visionOS","osVersion":"26.5.23O471"}
+```
+
+client definitions change over time. use a current, auditable source such as
+yt-dlp's `INNERTUBE_CLIENTS` when updating this value.
 
 ### YOUTUBE_SESSION_SERVER
 URL to an instance of [yt-session-generator](https://github.com/imputnet/yt-session-generator). used for automatically pulling `poToken` & `visitor_data` for youtube. can be local or remote.

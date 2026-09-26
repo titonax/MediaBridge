@@ -1,4 +1,28 @@
-FROM ghcr.io/imputnet/yt-session-generator:webserver AS yt-session-source
+FROM oven/bun:1.3.13-alpine AS yt-session-source
+
+ARG YT_SESSION_REF=bc48b66471bf886dd7f707e4fd7fef281e87f69a
+
+WORKDIR /opt/yt-session
+
+RUN apk add --no-cache ca-certificates curl tar \
+    && curl -fsSL \
+       "https://github.com/idMJA/youtube-trusted-session-generator/archive/${YT_SESSION_REF}.tar.gz" \
+       -o /tmp/yt-session.tar.gz \
+    && tar -xzf /tmp/yt-session.tar.gz --strip-components=1 \
+    && rm /tmp/yt-session.tar.gz
+
+# The upstream default fans out to CPU-1 workers. A single worker is enough
+# for one co-located MediaBridge session and avoids unnecessary memory use.
+RUN sed -i \
+      's/const generate = generateMultiThread;/const generate = generateSingleThread;/' \
+      src/index.ts \
+    && grep -q 'const generate = generateSingleThread;' src/index.ts \
+    && sed -i \
+      -e 's/"fastify": "\^5.3.2"/"fastify": "5.3.2"/' \
+      -e 's/"global-agent": "\^4.1.2"/"global-agent": "4.1.2"/' \
+      -e 's/"jsdom": "\^27.0.0"/"jsdom": "27.0.0"/' \
+      package.json \
+    && bun install --production
 
 FROM node:24-alpine AS build
 ENV PNPM_HOME="/pnpm"
@@ -19,37 +43,17 @@ FROM node:24-alpine AS api-youtube-session
 
 ENV YOUTUBE_SESSION_SERVER="http://127.0.0.1:8080"
 ENV YOUTUBE_SESSION_INNERTUBE_CLIENT="MWEB"
+ENV YOUTUBE_SESSION_REFRESH_INTERVAL_MS="300000"
 
 WORKDIR /app
 
 RUN apk add --no-cache \
       ca-certificates \
-      chromium \
-      chromium-chromedriver \
-      freetype \
-      harfbuzz \
-      nss \
-      py3-pip \
-      python3 \
-      su-exec \
-      ttf-freefont \
-      xvfb
+      libstdc++ \
+      su-exec
 
-COPY --from=yt-session-source /app/potoken-generator.py /opt/yt-session/potoken-generator.py
-COPY --from=yt-session-source /app/potoken_generator /opt/yt-session/potoken_generator
-COPY --from=yt-session-source /app/requirements.txt /opt/yt-session/requirements.txt
-COPY docker/patch-youtube-session-generator.py /opt/yt-session/patch-youtube-session-generator.py
-
-RUN python3 /opt/yt-session/patch-youtube-session-generator.py \
-      /opt/yt-session/potoken_generator/extractor.py \
-    && rm /opt/yt-session/patch-youtube-session-generator.py \
-    && grep -q 'sandbox=False' /opt/yt-session/potoken_generator/extractor.py
-
-RUN python3 -m venv /opt/yt-session/venv \
-    && /opt/yt-session/venv/bin/pip install --no-cache-dir \
-       -r /opt/yt-session/requirements.txt \
-    && find /opt/yt-session/venv -path '*/nodriver/core/browser.py' \
-       -exec sed -i 's/await self.sleep(0.5)/await self.sleep(2)/' {} \;
+COPY --from=yt-session-source /usr/local/bin/bun /usr/local/bin/bun
+COPY --from=yt-session-source --chown=node:node /opt/yt-session /opt/yt-session
 
 COPY --from=build --chown=node:node /prod/api /app
 COPY --from=build --chown=node:node /app/.git /app/.git
@@ -59,7 +63,7 @@ RUN chmod 0755 /usr/local/bin/start-youtube-session
 
 EXPOSE 9000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=150s --retries=3 \
   CMD node -e "const p=process.env.API_PORT||9000; fetch('http://127.0.0.1:'+p+'/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
 CMD ["/usr/local/bin/start-youtube-session"]

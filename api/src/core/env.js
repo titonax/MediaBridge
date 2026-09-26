@@ -159,6 +159,8 @@ export const loadEnvs = (env = process.env) => {
             ?.split(',')
             ?.map(instance => instance.trim())
             ?.filter(Boolean),
+        ytDlpBin: env.YOUTUBE_YTDLP_BIN,
+        ytDlpBgutilUrl: env.YOUTUBE_YTDLP_BGUTIL_URL,
 
         // "never" | "session" | "always"
         forceLocalProcessing: env.FORCE_LOCAL_PROCESSING ?? "never",

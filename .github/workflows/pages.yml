@@ -39,7 +39,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      WEB_BASE_PATH: /MediaBridge-GPT
+      WEB_BASE_PATH: /${{ github.event.repository.name }}
       WEB_DEFAULT_API: https://mediabridge-api-ghcr-production.up.railway.app/
 
     steps:
@@ -109,7 +109,7 @@ jobs:
           test -f web/build/404.html
           test -d web/build/_app
           test -d web/build/_libav
-          grep -q '/MediaBridge-GPT/' web/build/index.html
+          grep -q "${WEB_BASE_PATH}/" web/build/index.html
 
           if grep -R -q 'localhost:9000' web/build; then
             echo "localhost API leaked into Pages artifact"

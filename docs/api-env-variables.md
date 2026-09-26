@@ -72,6 +72,8 @@ this document is not final and will expand over time. feel free to improve it!
 | YOUTUBE_PLAYER_ID                | `abcdefff`               |
 | YOUTUBE_INVIDIOUS_INSTANCES      | `https://inv.example`    |
 | YOUTUBE_PIPED_INSTANCES           | `https://piped.example`  |
+| YOUTUBE_YTDLP_BIN                  | `/opt/venv/bin/yt-dlp`   |
+| YOUTUBE_YTDLP_BGUTIL_URL           | `http://127.0.0.1:4416`  |
 
 [*view details*](#service-specific)
 
@@ -312,6 +314,18 @@ comma-separated list of Piped API instances used after Innertube and Invidious w
 MediaBridge calls `/streams/:videoId` and adapts Piped's `videoStreams` and `audioStreams` into the same internal model used by the native YouTube resolver. This keeps quality selection, merging and tunnel handling in one pipeline.
 
 Failed Piped instances enter the same short in-memory cooldown pattern as the Invidious provider. Keep the list limited to instances you trust.
+
+### YOUTUBE_YTDLP_BIN
+path to a local yt-dlp executable used only as a YouTube fallback after the
+native Innertube path returns a bot challenge. MediaBridge's production image
+ships a pinned yt-dlp release and configures this automatically.
+
+when unset, the yt-dlp fallback is disabled.
+
+### YOUTUBE_YTDLP_BGUTIL_URL
+base URL of a local bgutil PO-token provider used by the yt-dlp fallback.
+MediaBridge's production image starts a co-located provider on
+`http://127.0.0.1:4416` and configures this automatically.
 
 ### YOUTUBE_ALLOW_BETTER_AUDIO
 when set to `1`, cobalt will try to use higher quality audio if user requests it via `youtubeBetterAudio`. will negatively impact the rate limit of a secondary youtube client with a session.

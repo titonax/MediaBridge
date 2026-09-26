@@ -1,5 +1,5 @@
 # Build every proposed change, but deploy Pages only from main.
-name: Build and deploy web to Pages
+name: Build and deploy MediaBridge-GPT web to Pages
 
 on:
   workflow_dispatch:
@@ -39,7 +39,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      WEB_BASE_PATH: /MediaBridge
+      WEB_BASE_PATH: /MediaBridge-GPT
       WEB_DEFAULT_API: https://mediabridge-api-ghcr-production.up.railway.app/
 
     steps:
@@ -109,7 +109,7 @@ jobs:
           test -f web/build/404.html
           test -d web/build/_app
           test -d web/build/_libav
-          grep -q '/MediaBridge/' web/build/index.html
+          grep -q '/MediaBridge-GPT/' web/build/index.html
 
           if grep -R -q 'localhost:9000' web/build; then
             echo "localhost API leaked into Pages artifact"
@@ -122,7 +122,7 @@ jobs:
           fi
 
           if ! grep -R -q 'mediabridge-api-ghcr-production.up.railway.app' web/build; then
-            echo "remote MediaBridge API is missing from Pages artifact"
+            echo "remote MediaBridge-GPT API is missing from Pages artifact"
             exit 1
           fi
 

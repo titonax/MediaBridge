@@ -1,7 +1,9 @@
+import { ytdlpProvider } from "./ytdlp.js";
 import { invidiousProvider } from "./invidious.js";
 import { pipedProvider } from "./piped.js";
 
 const alternateProviders = [
+    ytdlpProvider,
     invidiousProvider,
     pipedProvider,
 ];

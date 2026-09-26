@@ -379,6 +379,7 @@ export default async function (o) {
 
     let info;
     let youtubeProvider = "innertube";
+    let youtubeHeaders;
     try {
         const preferredClient = innertubeClient;
         const resolved = await getBasicInfoWithClientFallback({
@@ -450,7 +451,8 @@ export default async function (o) {
     if (
         isYouTubeBotChallenge(info)
         && (
-            env.ytInvidiousInstances?.length
+            env.ytDlpBin
+            || env.ytInvidiousInstances?.length
             || env.ytPipedInstances?.length
         )
     ) {
@@ -460,12 +462,15 @@ export default async function (o) {
                 invidious: env.ytInvidiousInstances,
                 piped: env.ytPipedInstances,
             },
+            binary: env.ytDlpBin,
+            bgutilUrl: env.ytDlpBgutilUrl,
             dispatcher: o.dispatcher,
             fetchImpl: fetch,
         });
 
         if (alternate?.info) {
             youtubeProvider = alternate.provider;
+            youtubeHeaders = alternate.headers;
             info = alternate.info;
             console.info(
                 `[youtube] provider=${youtubeProvider} selected after innertube bot challenge`
@@ -787,6 +792,7 @@ export default async function (o) {
             bestAudio,
             isHLS: useHLS,
             originalRequest,
+            headers: youtubeHeaders,
 
             cover,
             cropCover: basicInfo.author.endsWith("- Topic"),
@@ -850,6 +856,7 @@ export default async function (o) {
             subtitles: subtitles?.url,
             filenameAttributes,
             fileMetadata,
+            headers: youtubeHeaders,
             isHLS: useHLS,
             originalRequest
         }

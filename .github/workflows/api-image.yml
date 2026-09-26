@@ -9,6 +9,7 @@ on:
       - api/**
       - packages/**
       - Dockerfile
+      - docker/start-api.sh
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - .github/workflows/api-image.yml
@@ -19,6 +20,7 @@ on:
       - api/**
       - packages/**
       - Dockerfile
+      - docker/start-api.sh
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
       - .github/workflows/api-image.yml

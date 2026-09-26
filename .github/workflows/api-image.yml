@@ -1,4 +1,4 @@
-name: Build MediaBridge API image
+name: Build MediaBridge-GPT API image
 
 on:
   workflow_dispatch:

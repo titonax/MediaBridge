@@ -13,6 +13,11 @@ import {
     getBasicInfoWithClientFallback,
     isYouTubeBotChallenge,
 } from "../helpers/youtube-client-fallback.js";
+import {
+    buildCustomInnertubeClient,
+    mergeInnertubeClientContext,
+    needsYouTubePlayer,
+} from "../helpers/youtube-client-context.js";
 import { resolveAlternateYouTubeInfo } from "../providers/youtube/index.js";
 
 // https://github.com/LuanRT/YouTube.js/pull/1052
@@ -37,16 +42,19 @@ const innertubeCache = {
         innertube: undefined,
         lastRefreshedAt: 0,
         visitorData: undefined,
+        clientContextKey: undefined,
     },
     androidVr: {
         innertube: undefined,
         lastRefreshedAt: 0,
         visitorData: undefined,
+        clientContextKey: undefined,
     },
     session: {
         innertube: undefined,
         lastRefreshedAt: 0,
         visitorData: undefined,
+        clientContextKey: undefined,
     },
 };
 
@@ -91,7 +99,12 @@ const clientsWithNoCipher = [
 
 const videoQualities = [144, 240, 360, 480, 720, 1080, 1440, 2160, 4320];
 
-const cloneInnertube = async (customFetch, useSession, visitorData) => {
+const cloneInnertube = async (
+    customFetch,
+    useSession,
+    visitorData,
+    clientContext
+) => {
     const cache = innertubeCache[
         useSession
             ? "session"
@@ -100,10 +113,15 @@ const cloneInnertube = async (customFetch, useSession, visitorData) => {
                 : "anonymous"
     ];
 
+    const clientContextKey = clientContext
+        ? JSON.stringify(clientContext)
+        : undefined;
+
     const shouldRefreshPlayer =
         !cache.innertube
         || cache.lastRefreshedAt + PLAYER_REFRESH_PERIOD < Date.now()
-        || cache.visitorData !== visitorData;
+        || cache.visitorData !== visitorData
+        || cache.clientContextKey !== clientContextKey;
 
     const rawCookie = getCookie("youtube");
     const cookie = rawCookie?.toString();
@@ -147,12 +165,17 @@ const cloneInnertube = async (customFetch, useSession, visitorData) => {
 
         cache.lastRefreshedAt = Date.now();
         cache.visitorData = visitorData;
+        cache.clientContextKey = clientContextKey;
     }
 
     const base = cache.innertube;
+    const context = mergeInnertubeClientContext(
+        base.session.context,
+        clientContext
+    );
 
     const session = new Session(
-        base.session.context,
+        context,
         base.session.api_key,
         base.session.api_version,
         base.session.account_index,
@@ -283,6 +306,14 @@ export default async function (o) {
         innertubeClient = env.ytSessionInnertubeClient || "WEB_EMBEDDED";
     }
 
+    const customClient = buildCustomInnertubeClient({
+        client: innertubeClient,
+        context: env.customInnertubeContext,
+        supportedClients: Constants.SUPPORTED_CLIENTS,
+    });
+
+    let activeCustomClient = customClient;
+
     const visitorData = innertubeClient === ANDROID_VR_CLIENT
         ? await getYouTubeVisitorData({
             videoId: o.id,
@@ -314,6 +345,11 @@ export default async function (o) {
                 "User-Agent",
                 Constants.CLIENTS.ANDROID_VR.USER_AGENT
             );
+        } else if (activeCustomClient?.userAgent) {
+            headers.set(
+                "User-Agent",
+                activeCustomClient.userAgent
+            );
         }
 
         return fetch(request, {
@@ -328,7 +364,8 @@ export default async function (o) {
         yt = await cloneInnertube(
             customFetch,
             useSession,
-            visitorData
+            visitorData,
+            customClient
         );
     } catch (e) {
         if (e === "no_session_tokens") {
@@ -343,14 +380,26 @@ export default async function (o) {
     let info;
     let youtubeProvider = "innertube";
     try {
+        const preferredClient = innertubeClient;
         const resolved = await getBasicInfoWithClientFallback({
-            getBasicInfo: yt.getBasicInfo.bind(yt),
+            getBasicInfo: (videoId, { client }) => (
+                customClient && client === preferredClient
+                    ? yt.getBasicInfo(videoId)
+                    : yt.getBasicInfo(videoId, { client })
+            ),
             videoId: o.id,
-            preferredClient: innertubeClient,
+            preferredClient,
         });
 
         info = resolved.info;
         innertubeClient = resolved.client;
+
+        if (
+            customClient
+            && innertubeClient !== preferredClient
+        ) {
+            activeCustomClient = undefined;
+        }
     } catch (e) {
         if (e?.info) {
             let errorInfo;
@@ -394,6 +443,7 @@ export default async function (o) {
             yt = sessionRetry.yt;
             innertubeClient = sessionRetry.client;
             useSession = true;
+            activeCustomClient = undefined;
         }
     }
 
@@ -420,6 +470,7 @@ export default async function (o) {
             console.info(
                 `[youtube] provider=${youtubeProvider} selected after innertube bot challenge`
             );
+            activeCustomClient = undefined;
         }
     }
 
@@ -707,7 +758,12 @@ export default async function (o) {
 
         if (
             youtubeProvider === "innertube"
-            && !clientsWithNoCipher.includes(innertubeClient)
+            && needsYouTubePlayer({
+                format: audio,
+                customClient: activeCustomClient,
+                client: innertubeClient,
+                noCipherClients: clientsWithNoCipher,
+            })
             && innertube
         ) {
             urls = await audio.decipher(innertube.session.player);
@@ -758,7 +814,20 @@ export default async function (o) {
 
             if (
                 youtubeProvider === "innertube"
-                && !clientsWithNoCipher.includes(innertubeClient)
+                && (
+                    needsYouTubePlayer({
+                        format: video,
+                        customClient: activeCustomClient,
+                        client: innertubeClient,
+                        noCipherClients: clientsWithNoCipher,
+                    })
+                    || needsYouTubePlayer({
+                        format: audio,
+                        customClient: activeCustomClient,
+                        client: innertubeClient,
+                        noCipherClients: clientsWithNoCipher,
+                    })
+                )
                 && innertube
             ) {
                 video = await video.decipher(innertube.session.player);

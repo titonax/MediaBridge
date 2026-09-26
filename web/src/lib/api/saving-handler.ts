@@ -70,7 +70,10 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
     }
 
     let response = await API.request(selectedRequest);
-    let tunneledRedirectDownload = false;
+    let tunneledRedirectDownload =
+        response?.status === "tunnel"
+        && get(settings).save.savingMethod === "download"
+        && selectedRequest.alwaysProxy === true;
 
     /*
         A direct cross-origin media URL cannot reliably trigger a browser

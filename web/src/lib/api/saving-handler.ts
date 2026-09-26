@@ -5,7 +5,7 @@ import lazySettingGetter from "$lib/settings/lazy-get";
 
 import { get } from "svelte/store";
 import { t } from "$lib/i18n/translations";
-import { downloadFile } from "$lib/download";
+import { downloadFile, downloadURLAsFile } from "$lib/download";
 import { createDialog } from "$lib/state/dialogs";
 import { downloadButtonState } from "$lib/state/omnibox";
 import { createSavePipeline } from "$lib/task-manager/queue";
@@ -70,6 +70,7 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
     }
 
     let response = await API.request(selectedRequest);
+    let tunneledRedirectDownload = false;
 
     /*
         A direct cross-origin media URL cannot reliably trigger a browser
@@ -90,6 +91,7 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
             ...selectedRequest,
             alwaysProxy: true,
         });
+        tunneledRedirectDownload = response?.status === "tunnel";
     }
 
     if (!response) {
@@ -116,6 +118,17 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
 
     if (response.status === "tunnel") {
         downloadButtonState.set("check");
+
+        if (tunneledRedirectDownload) {
+            try {
+                await downloadURLAsFile(response.url, response.filename);
+                downloadButtonState.set("done");
+                return;
+            } catch {
+                downloadButtonState.set("error");
+                return error(get(t)("error.tunnel.probe"));
+            }
+        }
 
         const probeResult = await API.probeCobaltTunnel(response.url);
 

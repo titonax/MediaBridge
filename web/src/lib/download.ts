@@ -45,6 +45,31 @@ export const openFile = (file: File) => {
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+export const downloadURLAsFile = async (url: string, filename: string) => {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+        throw new Error("invalid download url");
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`download failed with status ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    if (blob.size === 0) {
+        throw new Error("download returned an empty file");
+    }
+
+    const contentType = response.headers.get("Content-Type")
+        || blob.type
+        || "application/octet-stream";
+
+    return openFile(new File([blob], filename, {
+        type: contentType,
+    }));
+}
+
 export const shareFile = async (file: File) => {
     return await navigator?.share({
         files: [ file ],

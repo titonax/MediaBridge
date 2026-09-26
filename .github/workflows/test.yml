@@ -38,6 +38,16 @@ jobs:
         env:
           WEB_DEFAULT_API: https://api.dummy.example/
 
+  test-pinterest-media:
+    name: pinterest media selection unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - run: node --test api/src/processing/helpers/pinterest-media.test.js
+
   test-youtube-piped-provider:
     name: youtube Piped provider unit tests
     runs-on: ubuntu-latest

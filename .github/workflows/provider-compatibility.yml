@@ -1,0 +1,75 @@
+name: Provider compatibility audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: MediaBridge API base URL
+        required: false
+        default: https://mediabridge-api-ghcr-production.up.railway.app/
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/provider-smoke-cases.json
+      - scripts/provider-smoke.mjs
+      - .github/workflows/provider-compatibility.yml
+      - docs/provider-compatibility.md
+  push:
+    branches:
+      - main
+    paths:
+      - .github/provider-smoke-cases.json
+      - scripts/provider-smoke.mjs
+      - .github/workflows/provider-compatibility.yml
+      - docs/provider-compatibility.md
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate compatibility matrix
+        run: node scripts/provider-smoke.mjs --validate-only
+
+  live:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      MEDIA_BRIDGE_API_URL: ${{ github.event.inputs.api_url || 'https://mediabridge-api-ghcr-production.up.railway.app/' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run provider compatibility audit
+        id: audit
+        continue-on-error: true
+        run: node scripts/provider-smoke.mjs
+
+      - name: Upload compatibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-smoke-report
+          path: provider-smoke-report.json
+          if-no-files-found: warn
+
+      - name: Mark audit as diagnostic
+        if: steps.audit.outcome == 'failure'
+        run: echo "One or more provider cases failed. See the job summary and report artifact."

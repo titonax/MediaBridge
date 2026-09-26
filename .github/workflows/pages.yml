@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEB_BASE_PATH: /${{ github.event.repository.name }}
-      WEB_DEFAULT_API: https://mediabridge-api-ghcr-production.up.railway.app/
+      WEB_DEFAULT_API: https://mediabridge-api-production.up.railway.app/
 
     steps:
       - name: Checkout
@@ -121,7 +121,7 @@ jobs:
             exit 1
           fi
 
-          if ! grep -R -q 'mediabridge-api-ghcr-production.up.railway.app' web/build; then
+          if ! grep -R -q 'mediabridge-api-production.up.railway.app' web/build; then
             echo "remote MediaBridge-GPT API is missing from Pages artifact"
             exit 1
           fi

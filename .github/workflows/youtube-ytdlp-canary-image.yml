@@ -1,4 +1,4 @@
-name: Build MediaBridge provider yt-dlp canary image
+name: Build MediaBridge-GPT provider yt-dlp canary image
 
 on:
   workflow_dispatch:

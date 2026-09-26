@@ -16,6 +16,32 @@ const httpProxyVariables = ["NO_PROXY", "HTTP_PROXY", "HTTPS_PROXY"].flatMap(
 
 const changeCallbacks = {};
 
+const parseCustomInnertubeContext = (value) => {
+    if (!value) return;
+
+    let parsed;
+
+    try {
+        parsed = JSON.parse(value);
+    } catch {
+        throw new Error(
+            "CUSTOM_INNERTUBE_CONTEXT is invalid. Expected a JSON object."
+        );
+    }
+
+    if (
+        !parsed
+        || Array.isArray(parsed)
+        || typeof parsed !== "object"
+    ) {
+        throw new Error(
+            "CUSTOM_INNERTUBE_CONTEXT is invalid. Expected a JSON object."
+        );
+    }
+
+    return parsed;
+};
+
 const onEnvChanged = (changes) => {
     for (const key of changes) {
         if (changeCallbacks[key]) {
@@ -117,6 +143,9 @@ export const loadEnvs = (env = process.env) => {
         enabledServices,
 
         customInnertubeClient: env.CUSTOM_INNERTUBE_CLIENT,
+        customInnertubeContext: parseCustomInnertubeContext(
+            env.CUSTOM_INNERTUBE_CONTEXT
+        ),
         ytSessionServer: env.YOUTUBE_SESSION_SERVER,
         ytSessionReloadInterval: 300,
         ytSessionInnertubeClient: env.YOUTUBE_SESSION_INNERTUBE_CLIENT,
@@ -161,9 +190,14 @@ export const validateEnvs = async (env) => {
         throw new Error('SO_REUSEPORT is not supported');
     }
 
-    if (env.customInnertubeClient && !Constants.SUPPORTED_CLIENTS.includes(env.customInnertubeClient)) {
+    if (
+        env.customInnertubeClient
+        && !Constants.SUPPORTED_CLIENTS.includes(env.customInnertubeClient)
+        && !env.customInnertubeContext
+    ) {
         console.error("CUSTOM_INNERTUBE_CLIENT is invalid. Provided client is not supported.");
-        console.error(`Supported clients are: ${Constants.SUPPORTED_CLIENTS.join(', ')}\n`);
+        console.error(`Supported clients are: ${Constants.SUPPORTED_CLIENTS.join(', ')}`);
+        console.error("Unsupported clients require CUSTOM_INNERTUBE_CONTEXT.\n");
         throw new Error("Invalid CUSTOM_INNERTUBE_CLIENT");
     }
 

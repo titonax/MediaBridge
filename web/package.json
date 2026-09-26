@@ -17,12 +17,12 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/imputnet/cobalt.git"
+        "url": "git+https://github.com/titonax/MediaBridge-GPT.git"
     },
     "bugs": {
-        "url": "https://github.com/imputnet/cobalt/issues"
+        "url": "https://github.com/titonax/MediaBridge-GPT/issues"
     },
-    "homepage": "https://cobalt.tools/",
+    "homepage": "https://titonax.github.io/MediaBridge-GPT/",
     "devDependencies": {
         "@eslint/js": "^9.39.4",
         "@fontsource/ibm-plex-mono": "^5.2.7",

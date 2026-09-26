@@ -1,0 +1,143 @@
+{
+  "apiDefaults": {
+    "request": {
+      "downloadMode": "auto",
+      "videoQuality": "720",
+      "localProcessing": "disabled"
+    },
+    "probeBytes": true
+  },
+  "cases": [
+    {
+      "id": "youtube-basic",
+      "service": "youtube",
+      "sourceIssue": 1475,
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "coverage": "api-and-media"
+    },
+    {
+      "id": "vimeo-basic",
+      "service": "vimeo",
+      "sourceIssue": 1398,
+      "url": "https://vimeo.com/76979871",
+      "coverage": "api-and-media"
+    },
+    {
+      "id": "facebook-share-wrong-video",
+      "service": "facebook",
+      "sourceIssue": 1499,
+      "url": "https://www.facebook.com/share/v/1AQTkKfH1u/",
+      "coverage": "api-and-media",
+      "note": "Automated smoke verifies extraction and media bytes; content identity still needs semantic/manual verification."
+    },
+    {
+      "id": "facebook-share-regression",
+      "service": "facebook",
+      "sourceIssue": 1528,
+      "url": "https://www.facebook.com/share/v/1AvbTRr1aq/",
+      "coverage": "api-and-media"
+    },
+    {
+      "id": "bilibili-selfhost-regression",
+      "service": "bilibili",
+      "sourceIssue": 1502,
+      "url": "https://www.bilibili.com/video/BV1YXm4BUEeX/",
+      "coverage": "api-and-media"
+    },
+    {
+      "id": "twitter-post-regression",
+      "service": "twitter",
+      "sourceIssue": 1484,
+      "url": "https://x.com/stanleykwesi/status/1998773360377938169",
+      "coverage": "api-and-media"
+    },
+    {
+      "id": "twitter-gif-transcode",
+      "service": "twitter",
+      "sourceIssue": 1563,
+      "url": "https://x.com/aonoexorcist100/status/2088728495446786131/video/1",
+      "request": {
+        "convertGif": true
+      },
+      "coverage": "partial",
+      "note": "Exercises API/transcode path but not the reported iOS browser reload during local processing."
+    },
+    {
+      "id": "tiktok-fetch-regression",
+      "service": "tiktok",
+      "sourceIssue": 1505,
+      "url": "https://www.tiktok.com/@liiiilmooon/video/7574552571298270472",
+      "coverage": "api-and-media"
+    },
+    {
+      "id": "pinterest-original-quality",
+      "service": "pinterest",
+      "sourceIssue": 1284,
+      "url": "https://www.pinterest.com/pin/70437489341156/",
+      "coverage": "api-and-media",
+      "assertions": {
+        "targetUrlMustContain": "/originals/"
+      }
+    },
+    {
+      "id": "newgrounds-audio-bot-guard",
+      "service": "newgrounds",
+      "sourceIssue": 1456,
+      "url": "https://www.newgrounds.com/audio/listen/1239652",
+      "request": {
+        "downloadMode": "audio",
+        "audioFormat": "mp3"
+      },
+      "coverage": "api-and-media"
+    },
+    {
+      "id": "soundcloud-api-baseline",
+      "service": "soundcloud",
+      "sourceIssue": 1438,
+      "url": "https://soundcloud.com/bbnomula/nsfw",
+      "coverage": "partial",
+      "note": "Checks API/media only; upstream report specifically requires Firefox private mode plus local processing."
+    },
+    {
+      "id": "bluesky-video-baseline",
+      "service": "bluesky",
+      "sourceIssue": 1462,
+      "url": "https://bsky.app/profile/bsky.app/post/3mtwf7gxkwc2r",
+      "coverage": "partial",
+      "note": "Checks extraction/media bytes; Discord Android container compatibility remains manual."
+    },
+    {
+      "id": "okru-current-public-video",
+      "service": "ok",
+      "sourceIssue": 1595,
+      "url": "https://ok.ru/video/15723983997538",
+      "coverage": "api-and-media",
+      "note": "Issue did not provide a sample URL; this is a current public OK.ru fixture."
+    },
+    {
+      "id": "tiktok-age-restricted",
+      "service": "tiktok",
+      "sourceIssue": 1553,
+      "url": "https://vt.tiktok.com/ZS9VgfLQo/",
+      "coverage": "manual",
+      "manual": true,
+      "note": "Age-restricted anonymous access is treated as a product limitation; do not bypass account/age gates."
+    },
+    {
+      "id": "bluesky-discord-android",
+      "service": "bluesky",
+      "sourceIssue": 1462,
+      "coverage": "manual",
+      "manual": true,
+      "note": "Requires validating the downloaded MP4 in Discord on Android."
+    },
+    {
+      "id": "soundcloud-firefox-private-local-processing",
+      "service": "soundcloud",
+      "sourceIssue": 1438,
+      "coverage": "manual",
+      "manual": true,
+      "note": "Requires Firefox private browsing with local processing preferred/forced."
+    }
+  ]
+}

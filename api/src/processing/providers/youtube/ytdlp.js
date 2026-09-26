@@ -48,7 +48,9 @@ const normalizeFormat = (format) => {
     );
 
     return {
-        itag: format.format_id,
+        itag: Number.isNaN(Number(format.format_id))
+            ? format.format_id
+            : Number(format.format_id),
         mime_type: normalizeMimeType(format),
         content_length: String(
             Number.isFinite(estimatedSize) && estimatedSize > 0

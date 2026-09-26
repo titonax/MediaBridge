@@ -1,7 +1,10 @@
 <script lang="ts">
+    import { get } from "svelte/store";
     import { t } from "$lib/i18n/translations";
+    import settings from "$lib/state/settings";
 
     import { downloadFile } from "$lib/download";
+    import { createQueuedDownload } from "$lib/task-manager/queue";
     import type { DialogPickerItem } from "$lib/types/dialog";
 
     import Skeleton from "$components/misc/Skeleton.svelte";
@@ -32,6 +35,15 @@
     });
 
     const isTunnel = $derived(validUrl && new URL(item.url).pathname === "/tunnel");
+    const queueFilename = $derived.by(() => {
+        if (item.filename) return item.filename;
+
+        const extension = itemType === "video" ? "mp4"
+            : itemType === "gif" ? "gif"
+            : "jpg";
+
+        return `media_${number}.${extension}`;
+    });
 
     const loaded = () => {
         imageLoaded = true;
@@ -47,7 +59,14 @@
     class="picker-item"
     onclick={() => {
         if (validUrl) {
-            downloadFile({
+            if (isTunnel && get(settings).save.savingMethod === "download") {
+                return createQueuedDownload({
+                    url: item.url,
+                    filename: queueFilename,
+                });
+            }
+
+            return downloadFile({
                 url: item.url,
                 urlType: isTunnel ? "tunnel" : "redirect",
             });

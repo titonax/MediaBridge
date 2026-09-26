@@ -13,7 +13,7 @@ https://titonax.github.io/MediaBridge-GPT/
 The Pages build currently targets:
 
 ```
-https://mediabridge-api-ghcr-production.up.railway.app/
+https://mediabridge-api-production.up.railway.app/
 ```
 
 The API exposes a stable liveness endpoint:
@@ -53,7 +53,7 @@ https://titonax.github.io/MediaBridge-GPT/
                   |
                   | HTTPS
                   v
-https://mediabridge-api-ghcr-production.up.railway.app/
+https://mediabridge-api-production.up.railway.app/
                   |
                   +-- /healthz
                   +-- media resolvers

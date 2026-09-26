@@ -5,7 +5,7 @@ import lazySettingGetter from "$lib/settings/lazy-get";
 
 import { get } from "svelte/store";
 import { t } from "$lib/i18n/translations";
-import { downloadFile } from "$lib/download";
+import { downloadFile, downloadURLAsFile } from "$lib/download";
 import { createDialog } from "$lib/state/dialogs";
 import { downloadButtonState } from "$lib/state/omnibox";
 import { createSavePipeline } from "$lib/task-manager/queue";
@@ -69,7 +69,30 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
         convertGif: getSetting("save", "convertGif"),
     }
 
-    const response = await API.request(selectedRequest);
+    let response = await API.request(selectedRequest);
+    let tunneledRedirectDownload = false;
+
+    /*
+        A direct cross-origin media URL cannot reliably trigger a browser
+        download. Firefox/Chromium may simply open playable media in a new tab
+        because the remote server controls Content-Disposition and the HTML
+        download attribute does not apply reliably cross-origin.
+
+        When the selected saving method is "download", retry redirect responses
+        through the API tunnel. This keeps "share", "copy" and "ask" behavior
+        unchanged while making the download action behave like a download.
+    */
+    if (
+        response?.status === "redirect"
+        && get(settings).save.savingMethod === "download"
+        && !selectedRequest.alwaysProxy
+    ) {
+        response = await API.request({
+            ...selectedRequest,
+            alwaysProxy: true,
+        });
+        tunneledRedirectDownload = response?.status === "tunnel";
+    }
 
     if (!response) {
         downloadButtonState.set("error");
@@ -95,6 +118,17 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
 
     if (response.status === "tunnel") {
         downloadButtonState.set("check");
+
+        if (tunneledRedirectDownload) {
+            try {
+                await downloadURLAsFile(response.url, response.filename);
+                downloadButtonState.set("done");
+                return;
+            } catch {
+                downloadButtonState.set("error");
+                return error(get(t)("error.tunnel.probe"));
+            }
+        }
 
         const probeResult = await API.probeCobaltTunnel(response.url);
 

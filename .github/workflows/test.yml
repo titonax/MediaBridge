@@ -68,6 +68,16 @@ jobs:
           node-version: 'lts/*'
       - run: node --test api/src/processing/providers/youtube/invidious.test.js
 
+  test-youtube-tunnel-headers:
+    name: youtube tunnel request-header tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - run: node --test api/src/stream/request-headers.test.js
+
   test-youtube-ytdlp-provider:
     name: youtube yt-dlp provider unit tests
     runs-on: ubuntu-latest

@@ -1,6 +1,7 @@
 import { request } from "undici";
 import { Readable } from "node:stream";
 import { closeRequest, getHeaders, pipe } from "./shared.js";
+import { getRangeResponseSize, mergeRequestHeaders } from "./request-headers.js";
 import { handleHlsPlaylist, isHlsResponse, probeInternalHLSTunnel } from "./internal-hls.js";
 
 const CHUNK_SIZE = BigInt(8e6); // 8 MB
@@ -16,10 +17,13 @@ async function* readChunks(streamInfo, size) {
         }
 
         const chunk = await request(streamInfo.url, {
-            headers: {
-                ...getHeaders(streamInfo.service),
-                Range: `bytes=${read}-${read + CHUNK_SIZE}`
-            },
+            headers: mergeRequestHeaders(
+                getHeaders(streamInfo.service),
+                streamInfo.headers,
+                {
+                    range: `bytes=${read}-${read + CHUNK_SIZE}`,
+                }
+            ),
             dispatcher: streamInfo.dispatcher,
             signal: streamInfo.controller.signal,
             maxRedirections: 4
@@ -55,46 +59,64 @@ async function handleChunkedStream(streamInfo, res) {
     const cleanup = () => (res.end(), closeRequest(streamInfo.controller));
 
     try {
-        let req, attempts = 3;
+        let probe, attempts = 3;
         while (attempts--) {
-            req = await fetch(streamInfo.url, {
-                headers: getHeaders(streamInfo.service),
-                method: 'HEAD',
+            probe = await fetch(streamInfo.url, {
+                headers: mergeRequestHeaders(
+                    getHeaders(streamInfo.service),
+                    streamInfo.headers,
+                    {
+                        range: "bytes=0-0",
+                    }
+                ),
+                method: "GET",
                 dispatcher: streamInfo.dispatcher,
                 signal
             });
 
-            streamInfo.url = req.url;
-            if (req.status === 403 && streamInfo.transplant) {
+            streamInfo.url = probe.url;
+
+            if (probe.status === 403 && streamInfo.transplant) {
+                await probe.body?.cancel().catch(() => {});
                 try {
                     await streamInfo.transplant(streamInfo.dispatcher);
+                    continue;
                 } catch {
                     break;
                 }
-            } else break;
+            }
+
+            break;
         }
 
-        const size = BigInt(req.headers.get('content-length'));
+        if (!probe) return cleanup();
 
-        if (req.status !== 200 || !size) {
+        const sizeValue = getRangeResponseSize(
+            probe.status,
+            Object.fromEntries(probe.headers)
+        );
+        const contentType = probe.headers.get("content-type");
+
+        await probe.body?.cancel().catch(() => {});
+
+        if (!sizeValue) {
             return cleanup();
         }
 
+        const size = BigInt(sizeValue);
         const generator = readChunks(streamInfo, size);
 
         const abortGenerator = () => {
             generator.return();
-            signal.removeEventListener('abort', abortGenerator);
+            signal.removeEventListener("abort", abortGenerator);
         }
 
-        signal.addEventListener('abort', abortGenerator);
+        signal.addEventListener("abort", abortGenerator);
 
         const stream = Readable.from(generator);
 
-        for (const headerName of ['content-type', 'content-length']) {
-            const headerValue = req.headers.get(headerName);
-            if (headerValue) res.setHeader(headerName, headerValue);
-        }
+        if (contentType) res.setHeader("content-type", contentType);
+        res.setHeader("content-length", String(sizeValue));
 
         pipe(stream, res, cleanup);
     } catch {
@@ -108,10 +130,10 @@ async function handleGenericStream(streamInfo, res) {
 
     try {
         const fileResponse = await request(streamInfo.url, {
-            headers: {
-                ...Object.fromEntries(streamInfo.headers),
-                host: undefined
-            },
+            headers: mergeRequestHeaders(
+                getHeaders(streamInfo.service),
+                streamInfo.headers
+            ),
             dispatcher: streamInfo.dispatcher,
             signal,
             maxRedirections: 16
@@ -158,12 +180,10 @@ export function internalStream(streamInfo, res) {
 export async function probeInternalTunnel(streamInfo) {
     try {
         const signal = AbortSignal.timeout(3000);
-        const headers = {
-            ...Object.fromEntries(streamInfo.headers || []),
-            ...getHeaders(streamInfo.service),
-            host: undefined,
-            range: undefined
-        };
+        const headers = mergeRequestHeaders(
+            getHeaders(streamInfo.service),
+            streamInfo.headers
+        );
 
         if (streamInfo.isHLS) {
             return probeInternalHLSTunnel({

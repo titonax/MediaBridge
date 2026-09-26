@@ -69,7 +69,7 @@ The processing API currently runs on Railway from the MediaBridge-GPT GHCR image
 
 ## Project-path support
 
-GitHub Pages serves this repository below `/MediaBridge-GPT/`, not at the domain root. The web build therefore:
+GitHub Pages serves project sites below the current repository name, not at the domain root. The workflow derives `WEB_BASE_PATH` from `github.event.repository.name`, so a repository rename is picked up automatically without another code change. The intended MediaBridge-GPT path is `/MediaBridge-GPT/`. The web build therefore:
 
 - sets SvelteKit's base path from `WEB_BASE_PATH`;
 - resolves libav assets below that base path;

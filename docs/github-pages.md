@@ -1,11 +1,11 @@
 # GitHub Pages deployment
 
-MediaBridge uses GitHub Pages for the static web application and a separate HTTPS processing API for server-side extraction, proxying, tunnels, and FFmpeg work.
+MediaBridge-GPT uses GitHub Pages for the static web application and a separate HTTPS processing API for server-side extraction, proxying, tunnels, and FFmpeg work.
 
 ## Public web URL
 
 ```
-https://titonax.github.io/MediaBridge/
+https://titonax.github.io/MediaBridge-GPT/
 ```
 
 ## Processing API
@@ -44,12 +44,12 @@ Before building the web application it:
 5. builds the SvelteKit application only after that contract passes;
 6. rejects artifacts that still contain `localhost:9000` or the old invalid placeholder.
 
-This means a green Pages deployment represents both a valid static build and a reachable MediaBridge processing API at build time.
+This means a green Pages deployment represents both a valid static build and a reachable MediaBridge-GPT processing API at build time.
 
 ## Architecture
 
 ```
-https://titonax.github.io/MediaBridge/
+https://titonax.github.io/MediaBridge-GPT/
                   |
                   | HTTPS
                   v
@@ -65,11 +65,11 @@ GitHub Pages never runs the Node backend itself.
 
 ## Railway processing service
 
-The processing API currently runs on Railway from the MediaBridge GHCR image. The Pages health gate verifies the public API before building the static site.
+The processing API currently runs on Railway from the MediaBridge-GPT GHCR image. The Pages health gate verifies the public API before building the static site.
 
 ## Project-path support
 
-GitHub Pages serves this repository below `/MediaBridge/`, not at the domain root. The web build therefore:
+GitHub Pages serves this repository below `/MediaBridge-GPT/`, not at the domain root. The web build therefore:
 
 - sets SvelteKit's base path from `WEB_BASE_PATH`;
 - resolves libav assets below that base path;

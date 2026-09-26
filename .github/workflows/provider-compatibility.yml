@@ -1,10 +1,10 @@
-name: Provider compatibility audit
+name: MediaBridge-GPT provider compatibility audit
 
 on:
   workflow_dispatch:
     inputs:
       api_url:
-        description: MediaBridge API base URL
+        description: MediaBridge-GPT API base URL
         required: false
         default: https://mediabridge-api-ghcr-production.up.railway.app/
   pull_request:

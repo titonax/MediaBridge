@@ -5,10 +5,10 @@ import lazySettingGetter from "$lib/settings/lazy-get";
 
 import { get } from "svelte/store";
 import { t } from "$lib/i18n/translations";
-import { downloadFile, downloadURLAsFile } from "$lib/download";
+import { downloadFile } from "$lib/download";
 import { createDialog } from "$lib/state/dialogs";
 import { downloadButtonState } from "$lib/state/omnibox";
-import { createSavePipeline } from "$lib/task-manager/queue";
+import { createQueuedDownload, createSavePipeline } from "$lib/task-manager/queue";
 
 import type { CobaltSaveRequestBody } from "$lib/types/api";
 
@@ -70,10 +70,6 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
     }
 
     let response = await API.request(selectedRequest);
-    let tunneledRedirectDownload =
-        response?.status === "tunnel"
-        && get(settings).save.savingMethod === "download"
-        && selectedRequest.alwaysProxy === true;
 
     /*
         A direct cross-origin media URL cannot reliably trigger a browser
@@ -94,7 +90,6 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
             ...selectedRequest,
             alwaysProxy: true,
         });
-        tunneledRedirectDownload = response?.status === "tunnel";
     }
 
     if (!response) {
@@ -120,31 +115,29 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
     }
 
     if (response.status === "tunnel") {
-        downloadButtonState.set("check");
-
-        if (tunneledRedirectDownload) {
-            try {
-                await downloadURLAsFile(response.url, response.filename);
-                downloadButtonState.set("done");
-                return;
-            } catch {
-                downloadButtonState.set("error");
-                return error(get(t)("error.tunnel.probe"));
-            }
+        if (get(settings).save.savingMethod === "download") {
+            downloadButtonState.set("done");
+            return createQueuedDownload({
+                url: response.url,
+                filename: response.filename,
+                request: selectedRequest,
+                oldTaskId,
+            });
         }
 
+        downloadButtonState.set("check");
         const probeResult = await API.probeCobaltTunnel(response.url);
 
         if (probeResult === 200) {
             downloadButtonState.set("done");
-
             return downloadFile({
                 url: response.url,
+                urlType: "tunnel",
             });
-        } else {
-            downloadButtonState.set("error");
-            return error(get(t)("error.tunnel.probe"));
         }
+
+        downloadButtonState.set("error");
+        return error(get(t)("error.tunnel.probe"));
     }
 
     if (response.status === "local-processing") {
@@ -168,8 +161,17 @@ export const savingHandler = async ({ url, request, oldTaskId }: SavingHandlerAr
                 text: get(t)("button.download.audio"),
                 main: false,
                 action: () => {
-                    downloadFile({
+                    if (get(settings).save.savingMethod === "download" && response.audioFilename) {
+                        return createQueuedDownload({
+                            url: pickerAudio,
+                            filename: response.audioFilename,
+                            request: selectedRequest,
+                        });
+                    }
+
+                    return downloadFile({
                         url: pickerAudio,
+                        urlType: "tunnel",
                     });
                 },
             });

@@ -29,6 +29,7 @@ type CobaltPickerResponse = {
     picker: {
         type: 'photo' | 'video' | 'gif',
         url: string,
+        filename?: string,
         thumb?: string,
     }[];
     audio?: string,

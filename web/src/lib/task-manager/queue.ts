@@ -1,3 +1,4 @@
+import mime from "mime";
 import { get } from "svelte/store";
 import { t } from "$lib/i18n/translations";
 import { ffmpegMetadataArgs } from "$lib/util";
@@ -141,6 +142,46 @@ const showError = (errorCode: string) => {
         ],
         bodyText: get(t)(`error.${errorCode}`),
     });
+}
+
+type QueuedDownloadParams = {
+    url: string,
+    filename: string,
+    request?: CobaltSaveRequestBody,
+    oldTaskId?: string,
+}
+
+export const createQueuedDownload = ({
+    url,
+    filename,
+    request,
+    oldTaskId,
+}: QueuedDownloadParams) => {
+    if (!url || !filename) {
+        return showError("pipeline.missing_response_data");
+    }
+
+    const parentId = oldTaskId || uuid();
+    const mimeType = mime.getType(filename) || "application/octet-stream";
+    const pipeline: CobaltPipelineItem[] = [{
+        worker: "fetch",
+        workerId: uuid(),
+        parentId,
+        workerArgs: { url },
+    }];
+
+    addItem({
+        id: parentId,
+        state: "waiting",
+        pipeline,
+        canRetry: !!request,
+        originalRequest: request,
+        filename,
+        mimeType,
+        mediaType: getMediaType(mimeType) || "file",
+    });
+
+    openQueuePopover();
 }
 
 export const createSavePipeline = (

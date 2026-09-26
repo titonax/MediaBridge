@@ -1,4 +1,4 @@
-name: Build MediaBridge YouTube-session image
+name: Build MediaBridge-GPT YouTube-session image
 
 on:
   workflow_dispatch:

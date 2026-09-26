@@ -6,7 +6,7 @@ import { createStream } from "../stream/manage.js";
 import { splitFilenameExtension } from "../misc/utils.js";
 import { convertLanguageCode } from "../misc/language-codes.js";
 
-const extraProcessingTypes = new Set(["merge", "remux", "mute", "audio", "gif"]);
+const extraProcessingTypes = new Set(["merge", "remux", "mute", "audio", "gif", "proxy"]);
 
 export default function({
     r,
@@ -98,12 +98,46 @@ export default function({
 
         case "picker":
             responseType = "picker";
+
+            const shouldProxyPicker = alwaysProxy || localProcessing !== "disabled";
+            const picker = r.picker.map((item, index) => {
+                const extension = item.type === "video" ? "mp4"
+                    : item.type === "gif" ? "gif"
+                    : "jpg";
+                const filename = item.filename || `${host}_${index + 1}.${extension}`;
+
+                let itemUrl = item.url;
+                let isTunnel = false;
+
+                try {
+                    isTunnel = new URL(itemUrl).pathname === "/tunnel";
+                } catch {}
+
+                if (shouldProxyPicker && itemUrl && !isTunnel) {
+                    itemUrl = createStream({
+                        service: host,
+                        type: "proxy",
+                        url: itemUrl,
+                        headers: r.headers,
+                        filename,
+                        requestIP,
+                        originalRequest: r.originalRequest,
+                    });
+                }
+
+                return {
+                    ...item,
+                    url: itemUrl,
+                    filename,
+                };
+            });
+
             switch (host) {
                 case "instagram":
                 case "twitter":
                 case "snapchat":
                 case "bsky":
-                    params = { picker: r.picker };
+                    params = { picker };
                     break;
 
                 case "tiktok":
@@ -113,7 +147,7 @@ export default function({
                         audioStreamType = "proxy"
                     }
                     params = {
-                        picker: r.picker,
+                        picker,
                         url: createStream({
                             service: "tiktok",
                             type: audioStreamType,

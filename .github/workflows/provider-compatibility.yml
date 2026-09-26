@@ -15,6 +15,7 @@ on:
       - scripts/provider-smoke.mjs
       - .github/workflows/provider-compatibility.yml
       - docs/provider-compatibility.md
+      - api/src/processing/services/**
   push:
     branches:
       - main
@@ -23,6 +24,7 @@ on:
       - scripts/provider-smoke.mjs
       - .github/workflows/provider-compatibility.yml
       - docs/provider-compatibility.md
+      - api/src/processing/services/**
 
 permissions:
   contents: read

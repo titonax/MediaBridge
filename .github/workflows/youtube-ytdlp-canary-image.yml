@@ -1,4 +1,4 @@
-name: Build MediaBridge YouTube yt-dlp canary image
+name: Build MediaBridge provider yt-dlp canary image
 
 on:
   workflow_dispatch:
@@ -72,7 +72,7 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build YouTube yt-dlp canary image
+      - name: Build provider yt-dlp canary image
         uses: docker/build-push-action@v6
         with:
           context: .
